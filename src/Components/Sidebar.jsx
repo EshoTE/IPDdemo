@@ -11,17 +11,14 @@ function Sidebar() {
       handleLogout();
       return;
     }
-    
-    // Navigate to the route
     navigate(route);
   };
 
   const handleLogout = () => {
-    console.log("Logging out...");
-    window.location.reload();
+    localStorage.clear();
+    navigate('/login');
   };
 
-  // Determine active menu based on current path
   const getActiveMenu = () => {
     if (location.pathname === '/dashboard') return 'Dashboard';
     if (location.pathname === '/income') return 'Income';
@@ -32,31 +29,32 @@ function Sidebar() {
   const activeMenu = getActiveMenu();
 
   return (
-    <div className="w-64 h-[calc(100vh-80px)] bg-white border-r border-gray-200/50 p-5 sticky top-20 z-20">
-      
-      {/* User Profile Section */}
+    <div className="w-64 h-[calc(100vh-80px)] bg-gray-950 border-r border-white/10 p-5 sticky top-20 z-20">
+
       <div className="flex flex-col items-center justify-center gap-3 mt-3 mb-7">
-        <div className="w-20 h-20 bg-purple-200 rounded-full flex items-center justify-center">
+        <div className="w-20 h-20 bg-white/10 border border-white/10 rounded-full flex items-center justify-center">
           <span className="text-3xl">👤</span>
         </div>
-        <h5 className="text-gray-950 font-medium leading-6">
+        <h5 className="text-gray-300 font-medium leading-6">
           Your Name
         </h5>
       </div>
 
-      {/* Menu Items */}
       {SIDE_MENU_DATA.map((item, index) => (
         <button
           key={`menu_${index}`}
           className={`w-full flex items-center gap-4 text-base ${
-            activeMenu === item.label ? "text-white bg-purple-600" : "text-gray-700 hover:bg-purple-100 hover:text-purple-600"
-          } py-3 px-6 rounded-lg mb-3 transition-colors`}
+            activeMenu === item.label
+              ? "text-white bg-white/10 border border-white/10"
+              : "text-gray-400 hover:bg-white/5 hover:text-white"
+          } py-3 px-6 rounded-lg mb-3 transition-all duration-300`}
           onClick={() => handleClick(item.path)}
         >
           <item.icon className="text-xl" />
           {item.label}
         </button>
       ))}
+
     </div>
   );
 }

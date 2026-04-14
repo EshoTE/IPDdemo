@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './Home.jsx';
 import Income from './pages/Income.jsx';
 import Expense from './pages/Expense.jsx';
+import Landing from './pages/Landing.jsx';
 import Login from './pages/Auth/Login.jsx';
 import SignUp from './pages/Auth/SignUp.jsx';
 import Navbar from './Components/Navbar.jsx';
@@ -29,9 +30,10 @@ function App() {
   const totalBalance = totalIncome - totalExpenses;
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/IPDdemo">
       <Routes>
         {/* Auth Route */}
+        <Route path="/" element={<Landing />} />
         <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
@@ -77,7 +79,7 @@ function DashboardLayout({ children }) {
       <Navbar />
       <div className="flex">
         <Sidebar />
-        <div className="flex-1 p-6 bg-gray-100 min-h-screen">
+        <div className="flex-1 p-6 bg-gray-950 min-h-screen">
           {children}
         </div>
       </div>
