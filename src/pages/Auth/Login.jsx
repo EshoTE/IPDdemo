@@ -1,10 +1,30 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function Login() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    const response = await fetch('http://localhost:8080/api/v1/auth/authenticate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+    });
+    const data = await response.json();
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('email', email);
+
+    const userResponse = await fetch('http://localhost:8080/api/v1/users', {
+        headers: { 'Authorization': `Bearer ${data.token}` }
+    });
+    const users = await userResponse.json();
+    const currentUser = users.find(u => u.email === email);
+    localStorage.setItem('name', currentUser.name);
+    localStorage.setItem('userId', currentUser.id);
+
     navigate('/dashboard');
   };
 
@@ -25,6 +45,8 @@ function Login() {
               </label>
               <input
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="alex@termtrack.com"
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
               />
@@ -36,6 +58,8 @@ function Login() {
               </label>
               <input
                 type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
               />

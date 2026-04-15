@@ -5,6 +5,7 @@ import { SIDE_MENU_DATA } from "../utils/data";
 function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const userName = localStorage.getItem('name') || localStorage.getItem('email') || 'User';
 
   const handleClick = (route) => {
     if (route === "logout") {
@@ -36,7 +37,7 @@ function Sidebar() {
           <span className="text-3xl">👤</span>
         </div>
         <h5 className="text-gray-300 font-medium leading-6">
-          Your Name
+          {userName}
         </h5>
       </div>
 

@@ -1,6 +1,57 @@
-function Expense({ totalExpenses, transactions }) {
+import { useState, useEffect } from 'react';
+import { FaDeleteLeft } from "react-icons/fa6";
 
-  const expenseTransactions = transactions.filter(t => t.amount < 0);
+function Expense() {
+  const [transactions, setTransactions] = useState([]);
+  const [category, setCategory] = useState([]);
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState('');
+
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    fetch('http://localhost:8080/api/v1/transactions', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => setTransactions(data.filter(t => t.type === 'EXPENSE')))
+    .catch(err => console.error(err));
+  }, []);
+
+  const handleAddExpense = async () => {
+    const token = localStorage.getItem('token');
+    await fetch('http://localhost:8080/api/v1/transaction', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            description,
+            amount: parseFloat(amount),
+            category,
+            type: 'EXPENSE',
+            date,
+            user: { id: parseInt(localStorage.getItem('userId')) }
+        })
+    });
+    const updatedResponse = await fetch('http://localhost:8080/api/v1/transactions', {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const updatedData = await updatedResponse.json();
+    setTransactions(updatedData.filter(t => t.type === 'EXPENSE'));
+  };
+
+  const handleDeleteExpense = async (id) => {
+    const token = localStorage.getItem('token');
+    await fetch(`http://localhost:8080/api/v1/transaction/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    setTransactions(transactions.filter(t => t.id !== id));
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-950 p-6">
@@ -16,6 +67,8 @@ function Expense({ totalExpenses, transactions }) {
             </label>
             <input
               type="text"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
               placeholder="e.g., Groceries, Rent, Transport"
               className="w-full p-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
             />
@@ -27,6 +80,8 @@ function Expense({ totalExpenses, transactions }) {
             </label>
             <input
               type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
               placeholder="50"
               className="w-full p-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
             />
@@ -38,6 +93,8 @@ function Expense({ totalExpenses, transactions }) {
             </label>
             <input
               type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
               className="w-full p-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
             />
           </div>
@@ -48,13 +105,15 @@ function Expense({ totalExpenses, transactions }) {
             </label>
             <input
               type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder="Any additional details"
               className="w-full p-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
             />
           </div>
         </div>
 
-        <button className="w-full bg-white/10 border border-white/10 text-white py-3 rounded-lg hover:bg-white/20 transition-all duration-300 mt-2">
+        <button onClick={handleAddExpense} className="w-full bg-white/10 border border-white/10 text-white py-3 rounded-lg hover:bg-white/20 transition-all duration-300 mt-2">
           Add Expense
         </button>
       </div>
@@ -63,7 +122,7 @@ function Expense({ totalExpenses, transactions }) {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-white">Expense History</h2>
           <div className="flex items-center gap-4">
-            <p className="text-lg font-semibold text-red-400">Total: £{totalExpenses}</p>
+            <p className="text-lg font-semibold text-red-400">Total: £{transactions.reduce((sum, t) => sum + t.amount, 0)}</p>
             <button className="px-4 py-2 bg-white/10 border border-white/10 text-white text-sm rounded-lg hover:bg-white/20 transition-all duration-300">
               Export to CSV
             </button>
@@ -71,22 +130,21 @@ function Expense({ totalExpenses, transactions }) {
         </div>
 
         <div className="flex flex-col gap-4">
-          {expenseTransactions.length > 0 ? (
-            expenseTransactions.map((transaction) => (
+          {transactions.length > 0 ? (
+            transactions.map((transaction) => (
               <div key={transaction.id} className="flex items-center justify-between p-4 hover:bg-white/5 rounded-lg transition-all duration-300 border border-white/10">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/10 border border-white/10 rounded-xl flex items-center justify-center">
-                    <span className="text-2xl">{transaction.icon}</span>
-                  </div>
                   <div>
-                    <p className="font-medium text-white">{transaction.name}</p>
+                    <p className="font-medium text-white">{transaction.description}</p>
                     <p className="text-sm text-gray-500">{transaction.date}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <p className="text-red-400 font-semibold text-lg">-£{Math.abs(transaction.amount)}</p>
-                  <button className="text-gray-600 hover:text-red-400 transition-colors">
-                    <span className="text-xl">🗑️</span>
+                  <button
+                    onClick={() => handleDeleteExpense(transaction.id)}
+                    className="text-gray-600 hover:text-red-400 transition-colors">
+                    <span className="text-xl"><FaDeleteLeft /></span>
                   </button>
                 </div>
               </div>
