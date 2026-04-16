@@ -46,6 +46,9 @@ function Income() {
     });
     const updatedData = await updatedResponse.json();
     setTransactions(updatedData.filter(t => t.type === 'INCOME'));
+    setDescription('');
+    setAmount('');
+    setDate('');
   };
 
   const handleDeleteIncome = async (id) => {
@@ -110,8 +113,10 @@ function Income() {
     setShowTermPlanModal(false);
   };
 
-  const inputClass = "w-full p-3 bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-lg text-[#f0e8ea] placeholder-[rgba(240,232,234,0.2)] focus:outline-none focus:border-[rgba(200,150,160,0.3)] transition-colors";
-  const inputClassSm = "p-2 bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-lg text-[#f0e8ea] placeholder-[rgba(240,232,234,0.2)] focus:outline-none text-sm";
+  const totalIncome = transactions.reduce((sum, t) => sum + t.amount, 0);
+
+  const inputClass = "w-full p-3 bg-[#1a1c2e] border border-[rgba(200,150,160,0.12)] rounded-lg text-[#f0e8ea] placeholder-[rgba(240,232,234,0.3)] focus:outline-none focus:border-[rgba(200,150,160,0.3)] transition-colors";
+  const inputClassSm = "p-2 bg-[#1a1c2e] border border-[rgba(200,150,160,0.12)] rounded-lg text-[#f0e8ea] placeholder-[rgba(240,232,234,0.3)] focus:outline-none text-sm";
 
   return (
     <div className="min-h-screen bg-[#0c0e18] p-6">
@@ -121,7 +126,7 @@ function Income() {
 
         <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6">
           <h2 className="text-xl font-bold text-[#f0e8ea] mb-4">Term Plan Setup</h2>
-          <p className="text-[rgba(240,232,234,0.4)] text-sm mb-6">
+          <p className="text-[rgba(240,232,234,0.5)] text-sm mb-6">
             Set your student loan instalments and weekly budget for this academic year
           </p>
           <button
@@ -136,19 +141,19 @@ function Income() {
           <h2 className="text-xl font-bold text-[#f0e8ea] mb-4">Add Income</h2>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-[rgba(240,232,234,0.4)] mb-2">Income Source</label>
+            <label className="block text-sm font-medium text-[#f0e8ea] mb-2">Income Source</label>
             <input type="text" value={description} onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g., Part-time Job, Freelance" className={inputClass} />
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-[rgba(240,232,234,0.4)] mb-2">Amount (£)</label>
+            <label className="block text-sm font-medium text-[#f0e8ea] mb-2">Amount (£)</label>
             <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
               placeholder="800" className={inputClass} />
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-[rgba(240,232,234,0.4)] mb-2">Date</label>
+            <label className="block text-sm font-medium text-[#f0e8ea] mb-2">Date</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
           </div>
 
@@ -163,7 +168,9 @@ function Income() {
       <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[#f0e8ea]">Income History</h2>
-          <p className="text-lg font-semibold text-[#8ab8a0]">Total: £{transactions.reduce((sum, t) => sum + t.amount, 0)}</p>
+          <p className="text-lg font-semibold font-mono tracking-tight text-[#8ab8a0]">
+            Total: £{totalIncome.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+          </p>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -173,20 +180,22 @@ function Income() {
                 <div className="flex items-center gap-4">
                   <div>
                     <p className="font-medium text-[#f0e8ea]">{transaction.description}</p>
-                    <p className="text-sm text-[rgba(240,232,234,0.3)]">{transaction.date}</p>
+                    <p className="text-sm text-[rgba(240,232,234,0.4)]">{transaction.date}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <p className="text-[#8ab8a0] font-semibold text-lg">+£{transaction.amount}</p>
+                  <p className="text-[#8ab8a0] font-semibold font-mono tracking-tight text-lg">
+                    +£{Number(transaction.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                  </p>
                   <button onClick={() => handleDeleteIncome(transaction.id)}
-                    className="text-[rgba(240,232,234,0.2)] hover:text-[#d08888] transition-colors">
+                    className="text-[rgba(240,232,234,0.25)] hover:text-[#d08888] transition-colors">
                     <span className="text-xl"><FaDeleteLeft /></span>
                   </button>
                 </div>
               </div>
             ))
           ) : (
-            <p className="text-[rgba(240,232,234,0.25)] text-center py-8">No income transactions yet. Add your first income above!</p>
+            <p className="text-[rgba(240,232,234,0.3)] text-center py-8">No income transactions yet. Add your first income above!</p>
           )}
         </div>
       </div>
@@ -197,15 +206,15 @@ function Income() {
             <h2 className="text-xl font-bold text-[#f0e8ea] mb-6">Set Up Term Plan</h2>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-[rgba(240,232,234,0.4)] mb-2">Academic Year</label>
+              <label className="block text-sm font-medium text-[#f0e8ea] mb-2">Academic Year</label>
               <input type="text" value={academicYear} onChange={(e) => setAcademicYear(e.target.value)}
                 placeholder="e.g., 2025/26" className={inputClass} />
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-[rgba(240,232,234,0.4)] mb-2">Year of Study</label>
+              <label className="block text-sm font-medium text-[#f0e8ea] mb-2">Year of Study</label>
               <select value={yearOfStudy} onChange={(e) => setYearOfStudy(e.target.value)}
-                className="w-full p-3 bg-[#0a0c16] border border-[rgba(200,150,160,0.08)] rounded-lg text-[#f0e8ea] focus:outline-none focus:border-[rgba(200,150,160,0.3)] transition-colors">
+                className="w-full p-3 bg-[#1a1c2e] border border-[rgba(200,150,160,0.12)] rounded-lg text-[#f0e8ea] focus:outline-none focus:border-[rgba(200,150,160,0.3)] transition-colors">
                 <option value="">Select year</option>
                 <option value="1st Year">1st Year</option>
                 <option value="2nd Year">2nd Year</option>
@@ -216,24 +225,24 @@ function Income() {
 
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-[rgba(240,232,234,0.4)] mb-2">Start Date</label>
+                <label className="block text-sm font-medium text-[#f0e8ea] mb-2">Start Date</label>
                 <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[rgba(240,232,234,0.4)] mb-2">End Date</label>
+                <label className="block text-sm font-medium text-[#f0e8ea] mb-2">End Date</label>
                 <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
               </div>
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-[rgba(240,232,234,0.4)] mb-2">Weekly Budget (£)</label>
+              <label className="block text-sm font-medium text-[#f0e8ea] mb-2">Weekly Budget (£)</label>
               <input type="number" value={weeklyBudget} onChange={(e) => setWeeklyBudget(e.target.value)}
                 placeholder="150" className={inputClass} />
             </div>
 
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-[rgba(240,232,234,0.4)]">Student Finance Instalments</label>
+                <label className="block text-sm font-medium text-[#f0e8ea]">Student Finance Instalments</label>
                 <button onClick={addInstallment} className="text-[#c896a0] text-sm hover:opacity-80">+ Add</button>
               </div>
               {installments.map((inst, index) => (
