@@ -13,9 +13,13 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     'Groceries', 'Rent', 'Transport', 'Eating Out', 'Entertainment', 'Bills', 'Shopping', 'Other'
   ]);
   const [showCustomInput, setShowCustomInput] = useState(false);
+  const [termPlan, setTermPlan] = useState(null);
+  const [installments, setInstallments] = useState([]);
+  const [alerts, setAlerts] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+
     fetch('http://localhost:8080/api/v1/transactions', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -28,7 +32,111 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
       setCategories(merged);
     })
     .catch(err => console.error(err));
+
+    fetch('http://localhost:8080/api/v1/termPlans', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+      const activeId = parseInt(localStorage.getItem('activeTermPlanId'));
+      const plan = activeId ? data.find(p => p.id === activeId) : data[data.length - 1];
+      setTermPlan(plan || null);
+    })
+    .catch(err => console.error(err));
+
+    fetch('http://localhost:8080/api/v1/installments', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => setInstallments(data))
+    .catch(err => console.error(err));
   }, []);
+
+  useEffect(() => {
+    if (!termPlan) return;
+    const newAlerts = [];
+    const today = new Date();
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    const weeklySpent = transactions
+      .filter(t => new Date(t.date) >= weekAgo)
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const weeklyBudget = termPlan.weeklyBudget || 0;
+
+    if (weeklyBudget > 0) {
+      const percentUsed = (weeklySpent / weeklyBudget) * 100;
+
+      if (percentUsed >= 100) {
+        newAlerts.push({
+          type: 'danger',
+          title: 'Over Budget',
+          message: `You've exceeded your weekly budget by £${(weeklySpent - weeklyBudget).toFixed(2)}. Weekly budget: £${weeklyBudget.toFixed(2)}, spent: £${weeklySpent.toFixed(2)}.`
+        });
+      } else if (percentUsed >= 80) {
+        newAlerts.push({
+          type: 'warning',
+          title: 'Budget Warning',
+          message: `You've used ${Math.round(percentUsed)}% of your weekly budget (£${weeklySpent.toFixed(2)} of £${weeklyBudget.toFixed(2)}). £${(weeklyBudget - weeklySpent).toFixed(2)} remaining.`
+        });
+      } else if (percentUsed >= 50) {
+        newAlerts.push({
+          type: 'info',
+          title: 'Budget Update',
+          message: `You've used ${Math.round(percentUsed)}% of your weekly budget. £${(weeklyBudget - weeklySpent).toFixed(2)} remaining this week.`
+        });
+      }
+    }
+
+    const upcomingInstallments = installments
+      .filter(i => {
+        const instDate = new Date(i.date);
+        const daysUntil = Math.ceil((instDate - today) / (1000 * 60 * 60 * 24));
+        return daysUntil > 0 && daysUntil <= 14;
+      })
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    upcomingInstallments.forEach(inst => {
+      const daysUntil = Math.ceil((new Date(inst.date) - today) / (1000 * 60 * 60 * 24));
+      newAlerts.push({
+        type: 'success',
+        title: 'Upcoming Instalment',
+        message: `${inst.label || 'Student Finance'} of £${Number(inst.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })} arriving in ${daysUntil} ${daysUntil === 1 ? 'day' : 'days'}.`
+      });
+    });
+
+    const categorySpending = {};
+    transactions.forEach(t => {
+      if (t.category) {
+        categorySpending[t.category] = (categorySpending[t.category] || 0) + t.amount;
+      }
+    });
+
+    const sortedCategories = Object.entries(categorySpending).sort((a, b) => b[1] - a[1]);
+    if (sortedCategories.length > 0) {
+      const [topCategory, topAmount] = sortedCategories[0];
+      const totalSpent = transactions.reduce((sum, t) => sum + t.amount, 0);
+      const percentage = totalSpent > 0 ? Math.round((topAmount / totalSpent) * 100) : 0;
+      if (percentage >= 40) {
+        newAlerts.push({
+          type: 'info',
+          title: 'Spending Insight',
+          message: `${topCategory} accounts for ${percentage}% of your total expenses (£${topAmount.toFixed(2)}).`
+        });
+      }
+    }
+
+    if (newAlerts.length === 0 && weeklyBudget > 0) {
+      newAlerts.push({
+        type: 'success',
+        title: 'On Track',
+        message: `You're within your weekly budget. £${(weeklyBudget - weeklySpent).toFixed(2)} remaining this week.`
+      });
+    }
+
+    setAlerts(newAlerts);
+  }, [transactions, termPlan, installments]);
 
   const handleCategoryChange = (e) => {
     const value = e.target.value;
@@ -99,6 +207,40 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
   };
 
   const totalExpensesLocal = transactions.reduce((sum, t) => sum + t.amount, 0);
+
+  const getAlertStyles = (type) => {
+    switch (type) {
+      case 'danger':
+        return {
+          bg: 'bg-[rgba(208,136,136,0.08)]',
+          border: 'border-[rgba(208,136,136,0.15)]',
+          title: 'text-[#d08888]',
+          icon: '🔴'
+        };
+      case 'warning':
+        return {
+          bg: 'bg-[rgba(220,180,100,0.08)]',
+          border: 'border-[rgba(220,180,100,0.15)]',
+          title: 'text-[#dcb464]',
+          icon: '🟡'
+        };
+      case 'success':
+        return {
+          bg: 'bg-[rgba(138,184,160,0.08)]',
+          border: 'border-[rgba(138,184,160,0.15)]',
+          title: 'text-[#8ab8a0]',
+          icon: '🟢'
+        };
+      case 'info':
+      default:
+        return {
+          bg: 'bg-[rgba(150,170,200,0.08)]',
+          border: 'border-[rgba(150,170,200,0.15)]',
+          title: 'text-[#96aac8]',
+          icon: '🔵'
+        };
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0c0e18] p-6">
@@ -197,9 +339,6 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
             <p className="text-lg font-semibold font-mono tracking-tight text-[#d08888]">
               Total: £{totalExpensesLocal.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
             </p>
-            <button className="px-4 py-2 bg-[rgba(200,150,160,0.1)] border border-[rgba(200,150,160,0.18)] text-[#f0e8ea] text-sm rounded-lg hover:bg-[rgba(200,150,160,0.15)] transition-all duration-300">
-              Export to CSV
-            </button>
           </div>
         </div>
 
@@ -240,19 +379,33 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
         </div>
       </div>
 
-      <div className="bg-[rgba(208,136,136,0.04)] border border-[rgba(208,136,136,0.12)] rounded-2xl p-6 mt-6">
-        <h2 className="text-xl font-bold text-[#f0e8ea] mb-4">⚠️ Spending Alerts</h2>
+      <div className="bg-[rgba(200,150,160,0.04)] border border-[rgba(200,150,160,0.1)] rounded-2xl p-6 mt-6">
+        <h2 className="text-xl font-bold text-[#f0e8ea] mb-4">Spending Alerts</h2>
         <div className="flex flex-col gap-3">
-          <div className="bg-[rgba(208,136,136,0.06)] border border-[rgba(208,136,136,0.1)] p-4 rounded-lg">
-            <p className="text-sm text-[rgba(240,232,234,0.6)]">
-              <span className="font-semibold text-[#d08888]">Budget Alert:</span> You're approaching your weekly spending limit!
-            </p>
-          </div>
-          <div className="bg-[rgba(208,136,136,0.06)] border border-[rgba(208,136,136,0.1)] p-4 rounded-lg">
-            <p className="text-sm text-[rgba(240,232,234,0.6)]">
-              <span className="font-semibold text-[#d08888]">Upcoming Bill:</span> Rent payment due in 3 days (£500)
-            </p>
-          </div>
+          {alerts.length > 0 ? (
+            alerts.map((alert, index) => {
+              const styles = getAlertStyles(alert.type);
+              return (
+                <div key={index} className={`${styles.bg} border ${styles.border} p-4 rounded-lg`}>
+                  <p className="text-sm text-[rgba(240,232,234,0.7)]">
+                    <span className={`font-semibold ${styles.title}`}>{styles.icon} {alert.title}:</span> {alert.message}
+                  </p>
+                </div>
+              );
+            })
+          ) : !termPlan ? (
+            <div className="bg-[rgba(150,170,200,0.08)] border border-[rgba(150,170,200,0.15)] p-4 rounded-lg">
+              <p className="text-sm text-[rgba(240,232,234,0.7)]">
+                <span className="font-semibold text-[#96aac8]">🔵 Set up required:</span> Create a term plan with a weekly budget to enable spending alerts.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-[rgba(138,184,160,0.08)] border border-[rgba(138,184,160,0.15)] p-4 rounded-lg">
+              <p className="text-sm text-[rgba(240,232,234,0.7)]">
+                <span className="font-semibold text-[#8ab8a0]">🟢 All clear:</span> No spending alerts at this time.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

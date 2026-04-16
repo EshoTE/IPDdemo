@@ -46,7 +46,7 @@ function Sidebar() {
           key={`menu_${index}`}
           className={`w-full flex items-center gap-4 text-base ${
             activeMenu === item.label
-              ? "text-[#c896a0] bg-[rgba(200,150,160,0.1)] border border-[rgba(200,150,160,0.18)]"
+              ? "text-white bg-[rgba(200,150,160,0.1)] border border-[rgba(200,150,160,0.18)]"
               : "text-[rgba(240,232,234,0.35)] hover:bg-[rgba(200,150,160,0.05)] hover:text-[#f0e8ea] border border-transparent"
           } py-3 px-6 rounded-lg mb-3 transition-all duration-300`}
           onClick={() => handleClick(item.path)}
