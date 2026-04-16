@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FaDeleteLeft } from "react-icons/fa6";
+import API_URL from '../config';
 
 function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
   const [transactions, setTransactions] = useState([]);
@@ -25,7 +26,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
   const fetchTermPlans = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('http://localhost:8080/api/v1/termPlans', {
+      const res = await fetch(`${API_URL}/api/v1/termPlans`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -44,7 +45,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
   const fetchInstallments = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('http://localhost:8080/api/v1/installments', {
+      const res = await fetch(`${API_URL}/api/v1/installments`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -68,7 +69,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    fetch('http://localhost:8080/api/v1/transactions', {
+    fetch(`${API_URL}/api/v1/transactions`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
@@ -90,7 +91,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     }
     setError('');
     const token = localStorage.getItem('token');
-    await fetch('http://localhost:8080/api/v1/transaction', {
+    await fetch(`${API_URL}/api/v1/transaction`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -105,7 +106,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
             user: { id: parseInt(localStorage.getItem('userId')) }
         })
     });
-    const updatedResponse = await fetch('http://localhost:8080/api/v1/transactions', {
+    const updatedResponse = await fetch(`${API_URL}/api/v1/transactions`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
     const updatedData = await updatedResponse.json();
@@ -118,7 +119,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
 
   const handleDeleteIncome = async (id) => {
     const token = localStorage.getItem('token');
-    await fetch(`http://localhost:8080/api/v1/transaction/${id}`, {
+    await fetch(`${API_URL}/api/v1/transaction/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -197,7 +198,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     let termPlan;
 
     if (isEditing && editingPlanId) {
-      const res = await fetch(`http://localhost:8080/api/v1/termPlan/${editingPlanId}`, {
+      const res = await fetch(`${API_URL}/api/v1/termPlan/${editingPlanId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -216,14 +217,14 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
 
       const oldInstallments = activePlanInstallments.filter(i => i.termPlanId === editingPlanId);
       for (const old of oldInstallments) {
-        await fetch(`http://localhost:8080/api/v1/installment/${old.id}`, {
+        await fetch(`${API_URL}/api/v1/installment/${old.id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
       }
 
       for (const inst of validInstallments) {
-        await fetch('http://localhost:8080/api/v1/installment', {
+        await fetch(`${API_URL}/api/v1/installment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -238,7 +239,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
         });
       }
     } else {
-      const res = await fetch('http://localhost:8080/api/v1/termPlan', {
+      const res = await fetch(`${API_URL}/api/v1/termPlan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -256,7 +257,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
       termPlan = await res.json();
 
       for (const inst of validInstallments) {
-        await fetch('http://localhost:8080/api/v1/installment', {
+        await fetch(`${API_URL}/api/v1/installment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

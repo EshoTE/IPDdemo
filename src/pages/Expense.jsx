@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FaDeleteLeft } from "react-icons/fa6";
+import API_URL from '../config';
 
 function Expense({ totalExpenses, transactions: transactionsProp, refreshData }) {
   const [transactions, setTransactions] = useState([]);
@@ -20,7 +21,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
   useEffect(() => {
     const token = localStorage.getItem('token');
 
-    fetch('http://localhost:8080/api/v1/transactions', {
+    fetch(`${API_URL}/api/v1/transactions`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
@@ -33,7 +34,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     })
     .catch(err => console.error(err));
 
-    fetch('http://localhost:8080/api/v1/termPlans', {
+    fetch(`${API_URL}/api/v1/termPlans`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
@@ -44,7 +45,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     })
     .catch(err => console.error(err));
 
-    fetch('http://localhost:8080/api/v1/installments', {
+    fetch(`${API_URL}/api/v1/installments`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
@@ -169,7 +170,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     }
     setError('');
     const token = localStorage.getItem('token');
-    await fetch('http://localhost:8080/api/v1/transaction', {
+    await fetch(`${API_URL}/api/v1/transaction`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -184,7 +185,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
             user: { id: parseInt(localStorage.getItem('userId')) }
         })
     });
-    const updatedResponse = await fetch('http://localhost:8080/api/v1/transactions', {
+    const updatedResponse = await fetch(`${API_URL}/api/v1/transactions`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
     const updatedData = await updatedResponse.json();
@@ -198,7 +199,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
 
   const handleDeleteExpense = async (id) => {
     const token = localStorage.getItem('token');
-    await fetch(`http://localhost:8080/api/v1/transaction/${id}`, {
+    await fetch(`${API_URL}/api/v1/transaction/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
     });

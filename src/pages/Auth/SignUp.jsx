@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import API_URL from '../../config';
 
 const C = {
   bg: '#0c0e18',
@@ -187,7 +188,7 @@ function SignUp() {
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    const response = await fetch('http://localhost:8080/api/v1/auth/register', {
+    const response = await fetch(`${API_URL}/api/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password })

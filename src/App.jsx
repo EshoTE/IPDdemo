@@ -8,6 +8,7 @@ import Login from './pages/Auth/Login.jsx';
 import SignUp from './pages/Auth/SignUp.jsx';
 import Navbar from './Components/Navbar.jsx';
 import Sidebar from './Components/Sidebar.jsx';
+import API_URL from './config';
 
 function App() {
   const [transactions, setTransactions] = useState([]);
@@ -19,14 +20,14 @@ function App() {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    fetch('http://localhost:8080/api/v1/transactions', {
+    fetch(`${API_URL}/api/v1/transactions`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
     .then(data => setTransactions(data))
     .catch(err => console.error(err));
 
-    fetch('http://localhost:8080/api/v1/installments', {
+    fetch(`${API_URL}/api/v1/installments`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { SIDE_MENU_DATA } from "../utils/data";
+import API_URL from '../config';
 
 function Sidebar() {
   const navigate = useNavigate();
@@ -69,7 +70,7 @@ function Sidebar() {
         updateBody.password = newPassword;
       }
 
-      const res = await fetch(`http://localhost:8080/api/v1/user/${userId}`, {
+      const res = await fetch(`${API_URL}/api/v1/user/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

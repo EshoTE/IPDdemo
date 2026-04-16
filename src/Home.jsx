@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SummaryCards from './Components/SummaryCards';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import API_URL from './config';
 
 function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
   const [transactions, setTransactions] = useState([]);
@@ -17,14 +18,14 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
     const token = localStorage.getItem('token');
     const userId = parseInt(localStorage.getItem('userId'));
 
-    fetch('http://localhost:8080/api/v1/transactions', {
+    fetch(`${API_URL}/api/v1/transactions`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => setTransactions(data))
       .catch(err => console.error(err));
 
-    fetch('http://localhost:8080/api/v1/termPlans', {
+    fetch(`${API_URL}/api/v1/termPlans`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -35,7 +36,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
       })
       .catch(err => console.error(err));
 
-    fetch('http://localhost:8080/api/v1/installments', {
+    fetch(`${API_URL}/api/v1/installments`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())

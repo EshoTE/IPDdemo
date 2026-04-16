@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import API_URL from '../../config';
 
 function FloatingCard({ children, delay = 0, x = 0, y = 0, duration = 6 }) {
   return (
@@ -178,7 +179,7 @@ function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const response = await fetch('http://localhost:8080/api/v1/auth/authenticate', {
+    const response = await fetch(`${API_URL}/api/v1/auth/authenticate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -194,7 +195,7 @@ function Login() {
     localStorage.setItem('email', email);
 
     try {
-        const userResponse = await fetch('http://localhost:8080/api/v1/users', {
+        const userResponse = await fetch(`${API_URL}/api/v1/users`, {
             headers: { 'Authorization': `Bearer ${data.token}` }
         });
         const users = await userResponse.json();
