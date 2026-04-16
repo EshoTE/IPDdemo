@@ -197,6 +197,7 @@ function Login() {
       const data = await response.json();
       localStorage.setItem('token', data.token);
       localStorage.setItem('email', email);
+      localStorage.setItem('role', currentUser.role);
 
       try {
           const userResponse = await fetch(`${API_URL}/api/v1/users`, {

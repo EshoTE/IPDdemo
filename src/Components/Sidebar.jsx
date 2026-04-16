@@ -124,6 +124,7 @@ function Sidebar() {
     if (location.pathname === '/dashboard') return 'Dashboard';
     if (location.pathname === '/income') return 'Income';
     if (location.pathname === '/expense') return 'Expense';
+    if (location.pathname === '/admin') return 'Admin';
     return 'Dashboard';
   };
 
@@ -147,20 +148,22 @@ function Sidebar() {
           </button>
         </div>
 
-        {SIDE_MENU_DATA.map((item, index) => (
-          <button
-            key={`menu_${index}`}
-            className={`w-full flex items-center gap-4 text-base ${
-              activeMenu === item.label
-                ? "text-white bg-[rgba(200,150,160,0.1)] border border-[rgba(200,150,160,0.18)]"
-                : "text-[rgba(240,232,234,0.35)] hover:bg-[rgba(200,150,160,0.05)] hover:text-[#f0e8ea] border border-transparent"
-            } py-3 px-6 rounded-lg mb-3 transition-all duration-300`}
-            onClick={() => handleClick(item.path)}
-          >
-            <item.icon className="text-xl" />
-            {item.label}
-          </button>
-        ))}
+        {SIDE_MENU_DATA
+          .filter(item => !item.adminOnly || localStorage.getItem('role') === 'ADMIN')
+          .map((item, index) => (
+            <button
+              key={`menu_${index}`}
+              className={`w-full flex items-center gap-4 text-base ${
+                activeMenu === item.label
+                  ? "text-white bg-[rgba(200,150,160,0.1)] border border-[rgba(200,150,160,0.18)]"
+                  : "text-[rgba(240,232,234,0.35)] hover:bg-[rgba(200,150,160,0.05)] hover:text-[#f0e8ea] border border-transparent"
+              } py-3 px-6 rounded-lg mb-3 transition-all duration-300`}
+              onClick={() => handleClick(item.path)}
+            >
+              <item.icon className="text-xl" />
+              {item.label}
+            </button>
+          ))}
 
       </div>
 
