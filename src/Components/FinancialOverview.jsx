@@ -7,14 +7,14 @@ function FinancialOverview({ totalBalance, totalIncome, totalExpenses }) {
     { name: 'Total Expenses', value: totalExpenses },
   ];
 
-  const COLORS = ['#FF6B35', '#7C3AED'];
+  const COLORS = ['#8ab8a0', '#c896a0'];
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300">
+    <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6 hover:bg-[rgba(200,150,160,0.06)] transition-all duration-300">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white">Financial Overview</h2>
+        <h2 className="text-xl font-bold text-[#f0e8ea]">Financial Overview</h2>
         <button
-          className="px-4 py-2 bg-white/10 border border-white/10 text-white text-sm rounded-lg hover:bg-white/20 transition-all duration-300"
+          className="px-4 py-2 bg-[rgba(200,150,160,0.1)] border border-[rgba(200,150,160,0.18)] text-[#c896a0] text-sm rounded-lg hover:bg-[rgba(200,150,160,0.15)] transition-all duration-300"
           onClick={() => alert('Category breakdown coming soon!')}
         >
           View Breakdown
@@ -41,15 +41,15 @@ function FinancialOverview({ totalBalance, totalIncome, totalExpenses }) {
               verticalAlign="bottom"
               iconType="circle"
               formatter={(value) => (
-                <span className="text-sm text-gray-400">{value}</span>
+                <span className="text-sm text-[rgba(240,232,234,0.4)]">{value}</span>
               )}
             />
           </PieChart>
         </ResponsiveContainer>
 
         <div className="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-          <p className="text-sm text-gray-500 mb-1">Total Balance</p>
-          <p className="text-3xl font-bold text-white">£{totalBalance}</p>
+          <p className="text-sm text-[rgba(240,232,234,0.35)] mb-1">Total Balance</p>
+          <p className="text-3xl font-bold text-[#f0e8ea]">£{totalBalance}</p>
         </div>
       </div>
     </div>
