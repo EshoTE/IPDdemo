@@ -8,6 +8,7 @@ function Sidebar() {
   const location = useLocation();
   const userName = localStorage.getItem('name') || localStorage.getItem('email') || 'User';
   const [showProfile, setShowProfile] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -95,6 +96,30 @@ function Sidebar() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+
+    try {
+      const res = await fetch(`${API_URL}/api/v1/user/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!res.ok) {
+        setError('Failed to delete account. Please try again.');
+        setShowDeleteConfirm(false);
+        return;
+      }
+
+      localStorage.clear();
+      navigate('/login');
+    } catch (err) {
+      setError('Something went wrong. Please try again.');
+      setShowDeleteConfirm(false);
+    }
+  };
+
   const getActiveMenu = () => {
     if (location.pathname === '/dashboard') return 'Dashboard';
     if (location.pathname === '/income') return 'Income';
@@ -141,7 +166,7 @@ function Sidebar() {
 
       {showProfile && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-[#0c0e18] border border-[rgba(200,150,160,0.15)] rounded-2xl p-8 w-full max-w-md">
+          <div className="bg-[#0c0e18] border border-[rgba(200,150,160,0.15)] rounded-2xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-white">Profile Settings</h2>
               <button
@@ -228,6 +253,43 @@ function Sidebar() {
                 onClick={handleUpdateProfile}
                 className="flex-1 py-3 bg-[#c896a0] text-[#0c0e18] rounded-lg hover:opacity-90 transition-colors font-semibold">
                 Save Changes
+              </button>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-[rgba(200,150,160,0.08)]">
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full py-2.5 text-sm text-[#d08888] hover:bg-[rgba(208,136,136,0.08)] rounded-lg transition-colors">
+                Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60]">
+          <div className="bg-[#0c0e18] border border-[rgba(208,136,136,0.2)] rounded-2xl p-8 w-full max-w-sm">
+            <div className="flex flex-col items-center mb-6">
+              <div className="w-16 h-16 bg-[rgba(208,136,136,0.1)] border border-[rgba(208,136,136,0.2)] rounded-full flex items-center justify-center mb-4">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">Delete Account?</h3>
+              <p className="text-sm text-[rgba(255,255,255,0.5)] text-center">
+                This will permanently delete your account and all your data including transactions, term plans, and instalments. This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleDeleteAccount}
+                className="w-full py-3 bg-[#d08888] text-white rounded-lg hover:opacity-90 transition-colors font-semibold">
+                Yes, Delete My Account
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="w-full py-3 bg-[rgba(200,150,160,0.1)] border border-[rgba(200,150,160,0.18)] text-[#f0e8ea] rounded-lg hover:bg-[rgba(200,150,160,0.15)] transition-colors">
+                Cancel
               </button>
             </div>
           </div>

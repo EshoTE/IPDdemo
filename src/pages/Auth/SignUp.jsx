@@ -180,6 +180,7 @@ function SignUp() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -188,16 +189,36 @@ function SignUp() {
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    const response = await fetch(`${API_URL}/api/v1/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
-    });
-    const data = await response.json();
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('name', name);
-    navigate('/dashboard');
+    setError('');
+
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setError('Please fill in all fields');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/v1/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password })
+      });
+
+      if (!response.ok) {
+          setError('Email already in use or registration failed');
+          return;
+      }
+
+      const data = await response.json();
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('name', name);
+      navigate('/dashboard');
+    } catch (err) {
+      setError('Something went wrong. Please try again.');
+    }
   };
 
   const fadeIn = (delay) => ({
@@ -260,6 +281,18 @@ function SignUp() {
           </div>
 
           <form onSubmit={handleSignUp}>
+            {error && (
+              <div className="mb-6 p-3 rounded-xl"
+                style={{
+                  background: 'rgba(208,136,136,0.08)',
+                  border: '1px solid rgba(208,136,136,0.15)',
+                  opacity: mounted ? 1 : 0,
+                  transition: 'all 0.3s ease',
+                }}>
+                <p className="text-sm" style={{ color: '#d08888' }}>{error}</p>
+              </div>
+            )}
+
             <div style={fadeIn(200)} className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: C.muted }}>Name</label>
@@ -283,7 +316,6 @@ function SignUp() {
                 placeholder="••••••••"
                 className="w-full px-4 py-3 rounded-xl focus:outline-none transition-colors"
                 style={{ background: C.card, border: `1px solid ${C.cardBorder}`, color: C.text }} />
-              <p className="text-xs mt-1" style={{ color: C.expense }}>Please enter the password</p>
             </div>
 
             <div style={fadeIn(400)}>

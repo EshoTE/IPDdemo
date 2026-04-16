@@ -46,7 +46,6 @@ function AnimatedShowcase() {
 
   return (
     <div style={{ position: 'relative', width: 400, height: 500 }}>
-
       <div style={{
         position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
         width: 340, borderRadius: 20,
@@ -108,8 +107,7 @@ function AnimatedShowcase() {
         <div style={{
           padding: '10px 16px', borderRadius: 12,
           background: 'rgba(138,184,160,0.1)', border: '1px solid rgba(138,184,160,0.2)',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+          backdropFilter: 'blur(10px)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
         }}>
           <div style={{ fontSize: 10, color: 'rgba(240,232,234,0.3)' }}>Daily Budget</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: '#8ab8a0' }}>£18.42</div>
@@ -120,8 +118,7 @@ function AnimatedShowcase() {
         <div style={{
           padding: '10px 16px', borderRadius: 12,
           background: 'rgba(200,150,160,0.1)', border: '1px solid rgba(200,150,160,0.2)',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+          backdropFilter: 'blur(10px)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
         }}>
           <div style={{ fontSize: 10, color: 'rgba(240,232,234,0.3)' }}>Days Left</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: '#c896a0' }}>34</div>
@@ -133,8 +130,7 @@ function AnimatedShowcase() {
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '8px 14px', borderRadius: 10,
           background: 'rgba(208,136,136,0.08)', border: '1px solid rgba(208,136,136,0.15)',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+          backdropFilter: 'blur(10px)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
         }}>
           <div style={{
             width: 20, height: 20, borderRadius: 6,
@@ -150,8 +146,7 @@ function AnimatedShowcase() {
         <div style={{
           padding: '8px 14px', borderRadius: 10,
           background: 'rgba(200,150,160,0.06)', border: '1px solid rgba(200,150,160,0.12)',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+          backdropFilter: 'blur(10px)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
         }}>
           <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 24 }}>
             {[40, 65, 30, 80, 55, 45, 70].map((h, i) => (
@@ -171,6 +166,7 @@ function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -179,36 +175,47 @@ function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const response = await fetch(`${API_URL}/api/v1/auth/authenticate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-    });
+    setError('');
 
-    if (!response.ok) {
-        console.error('Login failed', response.status);
-        return;
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter your email and password');
+      return;
     }
-
-    const data = await response.json();
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('email', email);
 
     try {
-        const userResponse = await fetch(`${API_URL}/api/v1/users`, {
-            headers: { 'Authorization': `Bearer ${data.token}` }
-        });
-        const users = await userResponse.json();
-        const currentUser = users.find(u => u.email === email);
-        if (currentUser) {
-            localStorage.setItem('name', currentUser.name);
-            localStorage.setItem('userId', currentUser.id);
-        }
-    } catch (err) {
-        console.error('Could not fetch user details', err);
-    }
+      const response = await fetch(`${API_URL}/api/v1/auth/authenticate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+      });
 
-    navigate('/dashboard');
+      if (!response.ok) {
+          setError('Invalid email or password');
+          return;
+      }
+
+      const data = await response.json();
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('email', email);
+
+      try {
+          const userResponse = await fetch(`${API_URL}/api/v1/users`, {
+              headers: { 'Authorization': `Bearer ${data.token}` }
+          });
+          const users = await userResponse.json();
+          const currentUser = users.find(u => u.email === email);
+          if (currentUser) {
+              localStorage.setItem('name', currentUser.name);
+              localStorage.setItem('userId', currentUser.id);
+          }
+      } catch (err) {
+          console.error('Could not fetch user details', err);
+      }
+
+      navigate('/dashboard');
+    } catch (err) {
+      setError('Something went wrong. Please try again.');
+    }
   };
 
   const fadeIn = (delay) => ({
@@ -258,6 +265,18 @@ function Login() {
           </div>
 
           <form onSubmit={handleLogin}>
+            {error && (
+              <div className="mb-6 p-3 rounded-xl"
+                style={{
+                  background: 'rgba(208,136,136,0.08)',
+                  border: '1px solid rgba(208,136,136,0.15)',
+                  opacity: mounted ? 1 : 0,
+                  transition: 'all 0.3s ease',
+                }}>
+                <p className="text-sm" style={{ color: '#d08888' }}>{error}</p>
+              </div>
+            )}
+
             <div style={fadeIn(200)} className="mb-6">
               <label className="block text-sm font-medium mb-2" style={{ color: C.muted }}>
                 Email Address
