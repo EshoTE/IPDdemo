@@ -26,8 +26,9 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
     })
       .then(res => res.json())
       .then(data => {
-        const userPlan = data.find(p => p.user?.id === userId) || data[data.length - 1];
-        setTermPlan(userPlan);
+        const activeId = parseInt(localStorage.getItem('activeTermPlanId'));
+        const userPlan = activeId ? data.find(p => p.id === activeId) : data[data.length - 1];
+        setTermPlan(userPlan || data[data.length - 1] || null);
       })
       .catch(err => console.error(err));
 

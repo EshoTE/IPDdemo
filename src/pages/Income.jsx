@@ -10,12 +10,61 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
   const [error, setError] = useState('');
   const [termError, setTermError] = useState('');
   const [showTermPlanModal, setShowTermPlanModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState(null);
   const [yearOfStudy, setYearOfStudy] = useState('');
   const [academicYear, setAcademicYear] = useState('');
   const [weeklyBudget, setWeeklyBudget] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [installments, setInstallments] = useState([{ label: '', amount: '', date: '' }]);
+  const [termPlans, setTermPlans] = useState([]);
+  const [activePlan, setActivePlan] = useState(null);
+  const [activePlanInstallments, setActivePlanInstallments] = useState([]);
+
+  const fetchTermPlans = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch('http://localhost:8080/api/v1/termPlans', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setTermPlans(data);
+      if (data.length > 0) {
+        const stored = localStorage.getItem('activeTermPlanId');
+        const active = stored ? data.find(p => p.id === parseInt(stored)) || data[data.length - 1] : data[data.length - 1];
+        setActivePlan(active);
+        localStorage.setItem('activeTermPlanId', active.id);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchInstallments = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch('http://localhost:8080/api/v1/installments', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const today = new Date();
+      const past = data
+        .filter(i => new Date(i.date) <= today)
+        .map(i => ({
+          id: `inst-${i.id}`,
+          description: i.label || 'Student Finance',
+          amount: i.amount,
+          date: i.date,
+          type: 'INSTALMENT',
+          termPlanId: i.termPlanId
+        }));
+      setPastInstallments(past);
+      setActivePlanInstallments(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -26,24 +75,8 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     .then(data => setTransactions(data.filter(t => t.type === 'INCOME')))
     .catch(err => console.error(err));
 
-    fetch('http://localhost:8080/api/v1/installments', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => res.json())
-    .then(data => {
-      const today = new Date();
-      const past = data
-        .filter(i => new Date(i.date) <= today)
-        .map(i => ({
-          id: `inst-${i.id}`,
-          description: i.label || 'Student Finance',
-          amount: i.amount,
-          date: i.date,
-          type: 'INSTALMENT'
-        }));
-      setPastInstallments(past);
-    })
-    .catch(err => console.error(err));
+    fetchTermPlans();
+    fetchInstallments();
   }, []);
 
   const handleAddIncome = async () => {
@@ -107,6 +140,43 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     setInstallments(installments.filter((_, i) => i !== index));
   };
 
+  const openNewTermPlan = () => {
+    setIsEditing(false);
+    setEditingPlanId(null);
+    setYearOfStudy('');
+    setAcademicYear('');
+    setWeeklyBudget('');
+    setStartDate('');
+    setEndDate('');
+    setInstallments([{ label: '', amount: '', date: '' }]);
+    setTermError('');
+    setShowTermPlanModal(true);
+  };
+
+  const openEditTermPlan = () => {
+    if (!activePlan) return;
+    setIsEditing(true);
+    setEditingPlanId(activePlan.id);
+    setYearOfStudy(activePlan.yearOfStudy || '');
+    setAcademicYear(activePlan.academicYear || '');
+    setWeeklyBudget(activePlan.weeklyBudget?.toString() || '');
+    setStartDate(activePlan.startDate || '');
+    setEndDate(activePlan.endDate || '');
+    const planInstallments = activePlanInstallments.filter(i => i.termPlanId === activePlan.id);
+    if (planInstallments.length > 0) {
+      setInstallments(planInstallments.map(i => ({
+        id: i.id,
+        label: i.label || '',
+        amount: i.amount?.toString() || '',
+        date: i.date || ''
+      })));
+    } else {
+      setInstallments([{ label: '', amount: '', date: '' }]);
+    }
+    setTermError('');
+    setShowTermPlanModal(true);
+  };
+
   const handleTermPlanSubmit = async () => {
     const missing = [];
     if (!academicYear.trim()) missing.push('Academic Year');
@@ -124,44 +194,103 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     const token = localStorage.getItem('token');
     const userId = parseInt(localStorage.getItem('userId'));
 
-    const termPlanResponse = await fetch('http://localhost:8080/api/v1/termPlan', {
-        method: 'POST',
+    let termPlan;
+
+    if (isEditing && editingPlanId) {
+      const res = await fetch(`http://localhost:8080/api/v1/termPlan/${editingPlanId}`, {
+        method: 'PUT',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-            yearOfStudy,
-            academicYear,
-            weeklyBudget: parseFloat(weeklyBudget),
-            startDate,
-            endDate,
-            user: { id: userId }
+          yearOfStudy,
+          academicYear,
+          weeklyBudget: parseFloat(weeklyBudget),
+          startDate,
+          endDate,
+          user: { id: userId }
         })
-    });
-    const termPlan = await termPlanResponse.json();
+      });
+      termPlan = await res.json();
 
-    for (const inst of validInstallments) {
-        await fetch('http://localhost:8080/api/v1/installment', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                label: inst.label,
-                amount: parseFloat(inst.amount),
-                date: inst.date,
-                termPlan: { id: termPlan.id }
-            })
+      const oldInstallments = activePlanInstallments.filter(i => i.termPlanId === editingPlanId);
+      for (const old of oldInstallments) {
+        await fetch(`http://localhost:8080/api/v1/installment/${old.id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
         });
+      }
+
+      for (const inst of validInstallments) {
+        await fetch('http://localhost:8080/api/v1/installment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            label: inst.label,
+            amount: parseFloat(inst.amount),
+            date: inst.date,
+            termPlan: { id: termPlan.id }
+          })
+        });
+      }
+    } else {
+      const res = await fetch('http://localhost:8080/api/v1/termPlan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          yearOfStudy,
+          academicYear,
+          weeklyBudget: parseFloat(weeklyBudget),
+          startDate,
+          endDate,
+          user: { id: userId }
+        })
+      });
+      termPlan = await res.json();
+
+      for (const inst of validInstallments) {
+        await fetch('http://localhost:8080/api/v1/installment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            label: inst.label,
+            amount: parseFloat(inst.amount),
+            date: inst.date,
+            termPlan: { id: termPlan.id }
+          })
+        });
+      }
     }
+
+    localStorage.setItem('activeTermPlanId', termPlan.id);
     setShowTermPlanModal(false);
+    await fetchTermPlans();
+    await fetchInstallments();
     refreshData();
+  };
+
+  const handleSwitchPlan = (planId) => {
+    const plan = termPlans.find(p => p.id === parseInt(planId));
+    if (plan) {
+      setActivePlan(plan);
+      localStorage.setItem('activeTermPlanId', plan.id);
+      refreshData();
+    }
   };
 
   const allIncome = [...transactions, ...pastInstallments].sort((a, b) => new Date(b.date) - new Date(a.date));
   const totalIncomeLocal = allIncome.reduce((sum, t) => sum + t.amount, 0);
+  const currentPlanInstallments = activePlan ? activePlanInstallments.filter(i => i.termPlanId === activePlan.id) : [];
 
   const inputClass = "w-full p-3 bg-[#1a1c2e] border border-[rgba(200,150,160,0.12)] rounded-lg text-[#f0e8ea] placeholder-[rgba(240,232,234,0.3)] focus:outline-none focus:border-[rgba(200,150,160,0.3)] transition-colors";
   const inputClassSm = "p-2 bg-[#1a1c2e] border border-[rgba(200,150,160,0.12)] rounded-lg text-[#f0e8ea] placeholder-[rgba(240,232,234,0.3)] focus:outline-none text-sm";
@@ -173,16 +302,99 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
       <div className="grid grid-cols-2 gap-6 mb-6">
 
         <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6">
-          <h2 className="text-xl font-bold text-[#f0e8ea] mb-4">Term Plan Setup</h2>
-          <p className="text-[rgba(240,232,234,0.5)] text-sm mb-6">
-            Set your student loan instalments and weekly budget for this academic year
-          </p>
-          <button
-            className="w-full bg-[#c896a0] text-[#0c0e18] py-3 rounded-lg hover:opacity-90 transition-colors font-semibold"
-            onClick={() => setShowTermPlanModal(true)}
-          >
-            Set Up Term Plan
-          </button>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-[#f0e8ea]">Term Plan</h2>
+            {termPlans.length > 1 && (
+              <select
+                value={activePlan?.id || ''}
+                onChange={(e) => handleSwitchPlan(e.target.value)}
+                className="p-2 bg-[#1a1c2e] border border-[rgba(200,150,160,0.12)] rounded-lg text-[#f0e8ea] text-xs focus:outline-none"
+              >
+                {termPlans.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.academicYear || `Plan #${p.id}`} — {p.yearOfStudy || 'Unknown year'}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {activePlan ? (
+            <div>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className="text-xs text-[rgba(255,255,255,0.4)] uppercase tracking-widest mb-1">Academic Year</p>
+                  <p className="text-white font-semibold">{activePlan.academicYear || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[rgba(255,255,255,0.4)] uppercase tracking-widest mb-1">Year of Study</p>
+                  <p className="text-white font-semibold">{activePlan.yearOfStudy || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[rgba(255,255,255,0.4)] uppercase tracking-widest mb-1">Weekly Budget</p>
+                  <p className="text-white font-semibold font-mono">£{(activePlan.weeklyBudget || 0).toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[rgba(255,255,255,0.4)] uppercase tracking-widest mb-1">Term Dates</p>
+                  <p className="text-white text-sm font-semibold">
+                    {activePlan.startDate ? new Date(activePlan.startDate).toLocaleDateString('en-GB') : '-'}
+                    {' — '}
+                    {activePlan.endDate ? new Date(activePlan.endDate).toLocaleDateString('en-GB') : '-'}
+                  </p>
+                </div>
+              </div>
+
+              {currentPlanInstallments.length > 0 && (
+                <div className="mb-4 pt-3 border-t border-[rgba(200,150,160,0.08)]">
+                  <p className="text-xs text-[rgba(255,255,255,0.4)] uppercase tracking-widest mb-2">Instalments</p>
+                  <div className="flex flex-col gap-1.5">
+                    {currentPlanInstallments.map(inst => (
+                      <div key={inst.id} className="flex items-center justify-between">
+                        <span className="text-sm text-[rgba(255,255,255,0.6)]">{inst.label || 'Instalment'}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-[rgba(255,255,255,0.3)]">{inst.date}</span>
+                          <span className="text-sm font-mono font-semibold text-[#8ab8a0]">
+                            £{Number(inst.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex justify-between pt-2 border-t border-[rgba(200,150,160,0.06)]">
+                      <span className="text-xs text-[rgba(255,255,255,0.4)]">Total</span>
+                      <span className="text-sm font-mono font-semibold text-white">
+                        £{currentPlanInstallments
+                          .reduce((sum, i) => sum + i.amount, 0)
+                          .toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button onClick={openEditTermPlan}
+                  className="flex-1 py-2.5 bg-[rgba(200,150,160,0.1)] border border-[rgba(200,150,160,0.18)] text-[#f0e8ea] rounded-lg hover:bg-[rgba(200,150,160,0.18)] transition-colors text-sm font-medium">
+                  Edit Plan
+                </button>
+                <button onClick={openNewTermPlan}
+                  className="flex-1 py-2.5 bg-[#c896a0] text-[#0c0e18] rounded-lg hover:opacity-90 transition-colors text-sm font-semibold">
+                  New Plan
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-[rgba(240,232,234,0.5)] text-sm mb-6">
+                Set your student loan instalments and weekly budget for this academic year
+              </p>
+              <button
+                className="w-full bg-[#c896a0] text-[#0c0e18] py-3 rounded-lg hover:opacity-90 transition-colors font-semibold"
+                onClick={openNewTermPlan}
+              >
+                Set Up Term Plan
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6">
@@ -266,7 +478,9 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
       {showTermPlanModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-[#0c0e18] border border-[rgba(200,150,160,0.15)] rounded-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-[#f0e8ea] mb-6">Set Up Term Plan</h2>
+            <h2 className="text-xl font-bold text-[#f0e8ea] mb-6">
+              {isEditing ? 'Edit Term Plan' : 'Set Up Term Plan'}
+            </h2>
 
             {termError && (
               <div className="mb-4 p-3 bg-[rgba(208,136,136,0.08)] border border-[rgba(208,136,136,0.15)] rounded-lg">
@@ -339,7 +553,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
               </button>
               <button onClick={handleTermPlanSubmit}
                 className="flex-1 py-3 bg-[#c896a0] text-[#0c0e18] rounded-lg hover:opacity-90 transition-colors font-semibold">
-                Save Term Plan
+                {isEditing ? 'Update Plan' : 'Save Term Plan'}
               </button>
             </div>
           </div>
