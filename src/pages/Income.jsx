@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { FaDeleteLeft } from "react-icons/fa6";
 
-function Income() {
+function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
   const [transactions, setTransactions] = useState([]);
+  const [pastInstallments, setPastInstallments] = useState([]);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
+  const [error, setError] = useState('');
+  const [termError, setTermError] = useState('');
   const [showTermPlanModal, setShowTermPlanModal] = useState(false);
   const [yearOfStudy, setYearOfStudy] = useState('');
   const [academicYear, setAcademicYear] = useState('');
@@ -22,9 +25,37 @@ function Income() {
     .then(res => res.json())
     .then(data => setTransactions(data.filter(t => t.type === 'INCOME')))
     .catch(err => console.error(err));
+
+    fetch('http://localhost:8080/api/v1/installments', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+      const today = new Date();
+      const past = data
+        .filter(i => new Date(i.date) <= today)
+        .map(i => ({
+          id: `inst-${i.id}`,
+          description: i.label || 'Student Finance',
+          amount: i.amount,
+          date: i.date,
+          type: 'INSTALMENT'
+        }));
+      setPastInstallments(past);
+    })
+    .catch(err => console.error(err));
   }, []);
 
   const handleAddIncome = async () => {
+    const missing = [];
+    if (!description.trim()) missing.push('Title');
+    if (!amount || parseFloat(amount) <= 0) missing.push('Amount');
+    if (!date) missing.push('Date');
+    if (missing.length > 0) {
+      setError(`Please fill in: ${missing.join(', ')}`);
+      return;
+    }
+    setError('');
     const token = localStorage.getItem('token');
     await fetch('http://localhost:8080/api/v1/transaction', {
         method: 'POST',
@@ -49,6 +80,7 @@ function Income() {
     setDescription('');
     setAmount('');
     setDate('');
+    refreshData();
   };
 
   const handleDeleteIncome = async (id) => {
@@ -58,6 +90,7 @@ function Income() {
         headers: { 'Authorization': `Bearer ${token}` }
     });
     setTransactions(transactions.filter(t => t.id !== id));
+    refreshData();
   };
 
   const addInstallment = () => {
@@ -75,6 +108,19 @@ function Income() {
   };
 
   const handleTermPlanSubmit = async () => {
+    const missing = [];
+    if (!academicYear.trim()) missing.push('Academic Year');
+    if (!yearOfStudy) missing.push('Year of Study');
+    if (!weeklyBudget) missing.push('Weekly Budget');
+    if (!startDate) missing.push('Start Date');
+    if (!endDate) missing.push('End Date');
+    const validInstallments = installments.filter(i => i.label.trim() && i.amount && i.date);
+    if (validInstallments.length === 0) missing.push('At least one instalment');
+    if (missing.length > 0) {
+      setTermError(`Please fill in: ${missing.join(', ')}`);
+      return;
+    }
+    setTermError('');
     const token = localStorage.getItem('token');
     const userId = parseInt(localStorage.getItem('userId'));
 
@@ -95,7 +141,7 @@ function Income() {
     });
     const termPlan = await termPlanResponse.json();
 
-    for (const inst of installments) {
+    for (const inst of validInstallments) {
         await fetch('http://localhost:8080/api/v1/installment', {
             method: 'POST',
             headers: {
@@ -111,9 +157,11 @@ function Income() {
         });
     }
     setShowTermPlanModal(false);
+    refreshData();
   };
 
-  const totalIncome = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const allIncome = [...transactions, ...pastInstallments].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const totalIncomeLocal = allIncome.reduce((sum, t) => sum + t.amount, 0);
 
   const inputClass = "w-full p-3 bg-[#1a1c2e] border border-[rgba(200,150,160,0.12)] rounded-lg text-[#f0e8ea] placeholder-[rgba(240,232,234,0.3)] focus:outline-none focus:border-[rgba(200,150,160,0.3)] transition-colors";
   const inputClassSm = "p-2 bg-[#1a1c2e] border border-[rgba(200,150,160,0.12)] rounded-lg text-[#f0e8ea] placeholder-[rgba(240,232,234,0.3)] focus:outline-none text-sm";
@@ -140,10 +188,16 @@ function Income() {
         <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6">
           <h2 className="text-xl font-bold text-[#f0e8ea] mb-4">Add Income</h2>
 
+          {error && (
+            <div className="mb-4 p-3 bg-[rgba(208,136,136,0.08)] border border-[rgba(208,136,136,0.15)] rounded-lg">
+              <p className="text-sm text-[#d08888]">{error}</p>
+            </div>
+          )}
+
           <div className="mb-4">
-            <label className="block text-sm font-medium text-[#f0e8ea] mb-2">Income Source</label>
+            <label className="block text-sm font-medium text-[#f0e8ea] mb-2">Title</label>
             <input type="text" value={description} onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g., Part-time Job, Freelance" className={inputClass} />
+              placeholder="e.g., Part-time Job, Freelance, Bursary" className={inputClass} />
           </div>
 
           <div className="mb-4">
@@ -169,33 +223,42 @@ function Income() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[#f0e8ea]">Income History</h2>
           <p className="text-lg font-semibold font-mono tracking-tight text-[#8ab8a0]">
-            Total: £{totalIncome.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+            Total: £{totalIncomeLocal.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
           </p>
         </div>
 
         <div className="flex flex-col gap-4">
-          {transactions.length > 0 ? (
-            transactions.map((transaction) => (
+          {allIncome.length > 0 ? (
+            allIncome.map((transaction) => (
               <div key={transaction.id} className="flex items-center justify-between p-4 hover:bg-[rgba(200,150,160,0.05)] rounded-lg transition-all duration-300 border border-[rgba(200,150,160,0.08)]">
                 <div className="flex items-center gap-4">
                   <div>
-                    <p className="font-medium text-[#f0e8ea]">{transaction.description}</p>
-                    <p className="text-sm text-[rgba(240,232,234,0.4)]">{transaction.date}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-[#f0e8ea]">{transaction.description}</p>
+                      {transaction.type === 'INSTALMENT' && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-[rgba(138,184,160,0.1)] border border-[rgba(138,184,160,0.2)] text-[#8ab8a0]">
+                          Instalment
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-[rgba(255,255,255,0.4)]">{transaction.date}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <p className="text-[#8ab8a0] font-semibold font-mono tracking-tight text-lg">
                     +£{Number(transaction.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
                   </p>
-                  <button onClick={() => handleDeleteIncome(transaction.id)}
-                    className="text-[rgba(240,232,234,0.25)] hover:text-[#d08888] transition-colors">
-                    <span className="text-xl"><FaDeleteLeft /></span>
-                  </button>
+                  {transaction.type !== 'INSTALMENT' && (
+                    <button onClick={() => handleDeleteIncome(transaction.id)}
+                      className="text-[rgba(240,232,234,0.25)] hover:text-[#d08888] transition-colors">
+                      <span className="text-xl"><FaDeleteLeft /></span>
+                    </button>
+                  )}
                 </div>
               </div>
             ))
           ) : (
-            <p className="text-[rgba(240,232,234,0.3)] text-center py-8">No income transactions yet. Add your first income above!</p>
+            <p className="text-[rgba(255,255,255,0.3)] text-center py-8">No income transactions yet. Add your first income above!</p>
           )}
         </div>
       </div>
@@ -204,6 +267,12 @@ function Income() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-[#0c0e18] border border-[rgba(200,150,160,0.15)] rounded-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-[#f0e8ea] mb-6">Set Up Term Plan</h2>
+
+            {termError && (
+              <div className="mb-4 p-3 bg-[rgba(208,136,136,0.08)] border border-[rgba(208,136,136,0.15)] rounded-lg">
+                <p className="text-sm text-[#d08888]">{termError}</p>
+              </div>
+            )}
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-[#f0e8ea] mb-2">Academic Year</label>

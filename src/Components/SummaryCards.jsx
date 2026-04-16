@@ -12,7 +12,7 @@ function SummaryCards({ totalBalance, totalIncome, totalExpenses }){
           <p className="text-3xl font-bold font-mono tracking-tight text-[#f0e8ea]">
             £{(totalBalance || 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
           </p>
-          <MdAccountBalance className="text-5xl text-[rgba(240,232,234,0.2)]" />
+          <MdAccountBalance className="text-5xl text-white" />
         </div>
       </div>
 
@@ -22,7 +22,7 @@ function SummaryCards({ totalBalance, totalIncome, totalExpenses }){
           <p className="text-3xl font-bold font-mono tracking-tight text-[#8ab8a0]">
             £{(totalIncome || 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
           </p>
-          <IoWalletOutline className="text-5xl text-[rgba(240,232,234,0.2)]" />
+          <IoWalletOutline className="text-5xl text-white" />
         </div>
       </div>
 
@@ -32,7 +32,7 @@ function SummaryCards({ totalBalance, totalIncome, totalExpenses }){
           <p className="text-3xl font-bold font-mono tracking-tight text-[#d08888]">
             £{(totalExpenses || 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
           </p>
-          <BsCashCoin className="text-5xl text-[rgba(240,232,234,0.2)]" />
+          <BsCashCoin className="text-5xl text-white" />
         </div>
       </div>
 

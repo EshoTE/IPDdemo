@@ -11,21 +11,40 @@ import Sidebar from './Components/Sidebar.jsx';
 
 function App() {
   const [transactions, setTransactions] = useState([]);
+  const [installments, setInstallments] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refreshData = () => setRefreshKey(prev => prev + 1);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
+
     fetch('http://localhost:8080/api/v1/transactions', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
     .then(data => setTransactions(data))
     .catch(err => console.error(err));
-  }, []);
 
-  const totalIncome = transactions
+    fetch('http://localhost:8080/api/v1/installments', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => setInstallments(data))
+    .catch(err => console.error(err));
+  }, [refreshKey]);
+
+  const today = new Date();
+
+  const transactionIncome = transactions
     .filter(t => t.type === 'INCOME')
     .reduce((sum, t) => sum + t.amount, 0);
+
+  const instalmentIncome = installments
+    .filter(i => new Date(i.date) <= today)
+    .reduce((sum, i) => sum + i.amount, 0);
+
+  const totalIncome = transactionIncome + instalmentIncome;
 
   const totalExpenses = transactions
     .filter(t => t.type === 'EXPENSE')
@@ -48,6 +67,7 @@ function App() {
               totalIncome={totalIncome}
               totalExpenses={totalExpenses}
               transactions={transactions}
+              refreshData={refreshData}
             />
           </DashboardLayout>
         } />
@@ -57,6 +77,7 @@ function App() {
             <Income 
               totalIncome={totalIncome}
               transactions={transactions}
+              refreshData={refreshData}
             />
           </DashboardLayout>
         } />
@@ -66,6 +87,7 @@ function App() {
             <Expense 
               totalExpenses={totalExpenses}
               transactions={transactions}
+              refreshData={refreshData}
             />
           </DashboardLayout>
         } />
@@ -80,7 +102,6 @@ function DashboardLayout({ children }) {
       <Navbar />
       <div className="flex">
         <Sidebar />
-        
         <div className="flex-1 p-6 bg-[#0c0e18] min-h-screen">
           {children}
         </div>
