@@ -9,6 +9,7 @@ import SignUp from './pages/Auth/SignUp.jsx';
 import Navbar from './Components/Navbar.jsx';
 import Sidebar from './Components/Sidebar.jsx';
 import API_URL from './config';
+import Admin from './pages/Admin.jsx';
 
 function App() {
   const [transactions, setTransactions] = useState([]);
@@ -90,6 +91,12 @@ function App() {
               transactions={transactions}
               refreshData={refreshData}
             />
+          </DashboardLayout>
+        } />
+
+        <Route path="/admin" element={
+          <DashboardLayout>
+            <Admin />
           </DashboardLayout>
         } />
       </Routes>

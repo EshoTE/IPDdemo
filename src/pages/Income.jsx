@@ -205,6 +205,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          termName: `${academicYear} - ${yearOfStudy}`,
           yearOfStudy,
           academicYear,
           weeklyBudget: parseFloat(weeklyBudget),
@@ -246,6 +247,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          termName: `${academicYear} - ${yearOfStudy}`,
           yearOfStudy,
           academicYear,
           weeklyBudget: parseFloat(weeklyBudget),
