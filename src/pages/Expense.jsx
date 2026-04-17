@@ -10,6 +10,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
   const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
   const [categories, setCategories] = useState([
     'Groceries', 'Rent', 'Transport', 'Eating Out', 'Entertainment', 'Bills', 'Shopping', 'Other'
   ]);
@@ -159,6 +160,25 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     }
   };
 
+  const handleEditExpense = (transaction) => {
+    setEditingId(transaction.id);
+    setDescription(transaction.description || '');
+    setAmount(transaction.amount.toString());
+    setDate(transaction.date);
+    setCategory(transaction.category || '');
+    setShowCustomInput(false);
+    setError('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setDescription('');
+    setAmount('');
+    setDate('');
+    setCategory('');
+    setError('');
+  };
+
   const handleAddExpense = async () => {
     const missing = [];
     if (!category.trim()) missing.push('Category');
@@ -170,23 +190,43 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     }
     setError('');
     const token = localStorage.getItem('token');
-    await fetch(`${API_URL}/api/v1/transaction`, {
-        method: 'POST',
+
+    if (editingId) {
+      await fetch(`${API_URL}/api/v1/transaction/${editingId}`, {
+        method: 'PUT',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-            description: description || category,
-            amount: parseFloat(amount),
-            category,
-            type: 'EXPENSE',
-            date,
-            user: { id: parseInt(localStorage.getItem('userId')) }
+          description: description || category,
+          amount: parseFloat(amount),
+          category,
+          type: 'EXPENSE',
+          date
         })
-    });
+      });
+      setEditingId(null);
+    } else {
+      await fetch(`${API_URL}/api/v1/transaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          description: description || category,
+          amount: parseFloat(amount),
+          category,
+          type: 'EXPENSE',
+          date,
+          user: { id: parseInt(localStorage.getItem('userId')) }
+        })
+      });
+    }
+
     const updatedResponse = await fetch(`${API_URL}/api/v1/transactions`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     const updatedData = await updatedResponse.json();
     setTransactions(updatedData.filter(t => t.type === 'EXPENSE'));
@@ -204,6 +244,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
         headers: { 'Authorization': `Bearer ${token}` }
     });
     setTransactions(transactions.filter(t => t.id !== id));
+    if (editingId === id) handleCancelEdit();
     refreshData();
   };
 
@@ -248,7 +289,15 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
       <h1 className="text-2xl font-bold text-[#f0e8ea] mb-6">Expense Management</h1>
 
       <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6 mb-6">
-        <h2 className="text-xl font-bold text-[#f0e8ea] mb-4">Add Expense</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-[#f0e8ea]">{editingId ? 'Edit Expense' : 'Add Expense'}</h2>
+          {editingId && (
+            <button onClick={handleCancelEdit}
+              className="text-sm text-[rgba(255,255,255,0.4)] hover:text-white transition-colors">
+              Cancel edit
+            </button>
+          )}
+        </div>
 
         {error && (
           <div className="mb-4 p-3 bg-[rgba(208,136,136,0.08)] border border-[rgba(208,136,136,0.15)] rounded-lg">
@@ -328,8 +377,13 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
           </div>
         </div>
 
-        <button onClick={handleAddExpense} className="w-full bg-[rgba(200,150,160,0.12)] border border-[rgba(200,150,160,0.2)] text-[#f0e8ea] py-3 rounded-lg hover:bg-[rgba(200,150,160,0.2)] transition-all duration-300 mt-2 font-semibold">
-          Add Expense
+        <button onClick={handleAddExpense}
+          className={`w-full py-3 rounded-lg hover:opacity-90 transition-all duration-300 mt-2 font-semibold ${
+            editingId
+              ? 'bg-[#c896a0] text-[#0c0e18]'
+              : 'bg-[rgba(200,150,160,0.12)] border border-[rgba(200,150,160,0.2)] text-[#f0e8ea] hover:bg-[rgba(200,150,160,0.2)]'
+          }`}>
+          {editingId ? 'Update Expense' : 'Add Expense'}
         </button>
       </div>
 
@@ -346,7 +400,9 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
         <div className="flex flex-col gap-4">
           {transactions.length > 0 ? (
             transactions.map((transaction) => (
-              <div key={transaction.id} className="flex items-center justify-between p-4 hover:bg-[rgba(200,150,160,0.05)] rounded-lg transition-all duration-300 border border-[rgba(200,150,160,0.08)]">
+              <div key={transaction.id} className={`flex items-center justify-between p-4 hover:bg-[rgba(200,150,160,0.05)] rounded-lg transition-all duration-300 border ${
+                editingId === transaction.id ? 'border-[#c896a0] bg-[rgba(200,150,160,0.05)]' : 'border-[rgba(200,150,160,0.08)]'
+              }`}>
                 <div className="flex items-center gap-4">
                   <div>
                     <p className="font-medium text-[#f0e8ea]">
@@ -366,6 +422,10 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
                   <p className="text-[#d08888] font-semibold font-mono tracking-tight text-lg">
                     -£{Math.abs(transaction.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
                   </p>
+                  <button onClick={() => handleEditExpense(transaction)}
+                    className="text-[rgba(240,232,234,0.25)] hover:text-[#c896a0] transition-colors text-sm">
+                    ✏️
+                  </button>
                   <button
                     onClick={() => handleDeleteExpense(transaction.id)}
                     className="text-[rgba(240,232,234,0.25)] hover:text-[#d08888] transition-colors">

@@ -9,6 +9,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
   const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
   const [termError, setTermError] = useState('');
   const [showTermPlanModal, setShowTermPlanModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -80,6 +81,22 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     fetchInstallments();
   }, []);
 
+  const handleEditIncome = (transaction) => {
+    setEditingId(transaction.id);
+    setDescription(transaction.description);
+    setAmount(transaction.amount.toString());
+    setDate(transaction.date);
+    setError('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setDescription('');
+    setAmount('');
+    setDate('');
+    setError('');
+  };
+
   const handleAddIncome = async () => {
     const missing = [];
     if (!description.trim()) missing.push('Title');
@@ -91,23 +108,43 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     }
     setError('');
     const token = localStorage.getItem('token');
-    await fetch(`${API_URL}/api/v1/transaction`, {
-        method: 'POST',
+
+    if (editingId) {
+      await fetch(`${API_URL}/api/v1/transaction/${editingId}`, {
+        method: 'PUT',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-            description,
-            amount: parseFloat(amount),
-            category: 'Income',
-            type: 'INCOME',
-            date,
-            user: { id: parseInt(localStorage.getItem('userId')) }
+          description,
+          amount: parseFloat(amount),
+          category: 'Income',
+          type: 'INCOME',
+          date
         })
-    });
+      });
+      setEditingId(null);
+    } else {
+      await fetch(`${API_URL}/api/v1/transaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          description,
+          amount: parseFloat(amount),
+          category: 'Income',
+          type: 'INCOME',
+          date,
+          user: { id: parseInt(localStorage.getItem('userId')) }
+        })
+      });
+    }
+
     const updatedResponse = await fetch(`${API_URL}/api/v1/transactions`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     const updatedData = await updatedResponse.json();
     setTransactions(updatedData.filter(t => t.type === 'INCOME'));
@@ -124,6 +161,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
         headers: { 'Authorization': `Bearer ${token}` }
     });
     setTransactions(transactions.filter(t => t.id !== id));
+    if (editingId === id) handleCancelEdit();
     refreshData();
   };
 
@@ -401,7 +439,15 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
         </div>
 
         <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6">
-          <h2 className="text-xl font-bold text-[#f0e8ea] mb-4">Add Income</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-[#f0e8ea]">{editingId ? 'Edit Income' : 'Add Income'}</h2>
+            {editingId && (
+              <button onClick={handleCancelEdit}
+                className="text-sm text-[rgba(255,255,255,0.4)] hover:text-white transition-colors">
+                Cancel edit
+              </button>
+            )}
+          </div>
 
           {error && (
             <div className="mb-4 p-3 bg-[rgba(208,136,136,0.08)] border border-[rgba(208,136,136,0.15)] rounded-lg">
@@ -427,8 +473,10 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
           </div>
 
           <button onClick={handleAddIncome}
-            className="w-full bg-[#8ab8a0] text-[#0c0e18] py-3 rounded-lg hover:opacity-90 transition-colors font-semibold">
-            Add Income
+            className={`w-full py-3 rounded-lg hover:opacity-90 transition-colors font-semibold ${
+              editingId ? 'bg-[#c896a0] text-[#0c0e18]' : 'bg-[#8ab8a0] text-[#0c0e18]'
+            }`}>
+            {editingId ? 'Update Income' : 'Add Income'}
           </button>
         </div>
 
@@ -445,7 +493,9 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
         <div className="flex flex-col gap-4">
           {allIncome.length > 0 ? (
             allIncome.map((transaction) => (
-              <div key={transaction.id} className="flex items-center justify-between p-4 hover:bg-[rgba(200,150,160,0.05)] rounded-lg transition-all duration-300 border border-[rgba(200,150,160,0.08)]">
+              <div key={transaction.id} className={`flex items-center justify-between p-4 hover:bg-[rgba(200,150,160,0.05)] rounded-lg transition-all duration-300 border ${
+                editingId === transaction.id ? 'border-[#c896a0] bg-[rgba(200,150,160,0.05)]' : 'border-[rgba(200,150,160,0.08)]'
+              }`}>
                 <div className="flex items-center gap-4">
                   <div>
                     <div className="flex items-center gap-2">
@@ -464,10 +514,16 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
                     +£{Number(transaction.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
                   </p>
                   {transaction.type !== 'INSTALMENT' && (
-                    <button onClick={() => handleDeleteIncome(transaction.id)}
-                      className="text-[rgba(240,232,234,0.25)] hover:text-[#d08888] transition-colors">
-                      <span className="text-xl"><FaDeleteLeft /></span>
-                    </button>
+                    <>
+                      <button onClick={() => handleEditIncome(transaction)}
+                        className="text-[rgba(240,232,234,0.25)] hover:text-[#c896a0] transition-colors text-sm">
+                        ✏️
+                      </button>
+                      <button onClick={() => handleDeleteIncome(transaction.id)}
+                        className="text-[rgba(240,232,234,0.25)] hover:text-[#d08888] transition-colors">
+                        <span className="text-xl"><FaDeleteLeft /></span>
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
