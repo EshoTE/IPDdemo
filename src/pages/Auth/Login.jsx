@@ -176,6 +176,7 @@ function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    localStorage.clear();
 
     if (!email.trim() || !password.trim()) {
       setError('Please enter your email and password');

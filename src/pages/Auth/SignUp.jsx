@@ -190,6 +190,7 @@ function SignUp() {
   const handleSignUp = async (e) => {
     e.preventDefault();
     setError('');
+    localStorage.clear();
 
     if (!name.trim() || !email.trim() || !password.trim()) {
       setError('Please fill in all fields');
