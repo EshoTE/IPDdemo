@@ -214,8 +214,25 @@ function SignUp() {
 
       const data = await response.json();
       localStorage.setItem('token', data.token);
-      localStorage.setItem('name', name);
-      navigate('/dashboard');
+      localStorage.setItem('email', email);
+
+      try {
+        const userResponse = await fetch(`${API_URL}/api/v1/me`, {
+          headers: { 'Authorization': `Bearer ${data.token}` }
+        });
+        if (userResponse.ok) {
+          const currentUser = await userResponse.json();
+          localStorage.setItem('name', currentUser.name);
+          localStorage.setItem('userId', currentUser.id);
+          localStorage.setItem('role', currentUser.role);
+        }
+      } catch (err) {
+        console.error('SIGNUP /me ERROR:', err);
+        setError('Account created but something went wrong. Please try logging in.');
+        return;
+      }
+
+      window.location.href = '/IPDdemo/dashboard';
     } catch (err) {
       setError('Something went wrong. Please try again.');
     }

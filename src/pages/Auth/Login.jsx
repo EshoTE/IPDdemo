@@ -214,7 +214,7 @@ function Login() {
         return;
       }
 
-      navigate('/dashboard');
+      window.location.href = '/IPDdemo/dashboard';
     } catch (err) {
       setError('Something went wrong. Please try again.');
     }

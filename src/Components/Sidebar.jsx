@@ -27,7 +27,7 @@ function Sidebar() {
 
   const handleLogout = () => {
     localStorage.clear();
-    navigate('/login');
+    window.location.href = '/IPDdemo/login';
   };
 
   const openProfile = () => {
