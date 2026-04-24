@@ -13,6 +13,7 @@ function Admin() {
     { key: 'transaction', label: 'Transactions', endpoint: '/api/v1/admin/transactions' },
     { key: 'termplan', label: 'Term Plans', endpoint: '/api/v1/admin/termplans' },
     { key: 'installment', label: 'Installments', endpoint: '/api/v1/admin/installments' },
+    { key: 'budget', label: 'Budgets', endpoint: '/api/v1/admin/budgets' },
   ];
 
   const fetchData = async (endpoint) => {

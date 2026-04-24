@@ -18,21 +18,30 @@ function App() {
   const refreshData = () => setRefreshKey(prev => prev + 1);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+  const token = localStorage.getItem('token');
+  if (!token) return;
 
-    fetch(`${API_URL}/api/v1/transactions`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => res.json())
-    .then(data => setTransactions(data))
+  const handleAuthError = (res) => {
+    if (res.status === 401) {
+      localStorage.clear();
+      window.location.href = '/IPDdemo/login';
+      return null;
+    }
+    return res.ok ? res.json() : [];
+  };
+
+  fetch(`${API_URL}/api/v1/transactions`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+    .then(handleAuthError)
+    .then(data => { if (Array.isArray(data)) setTransactions(data); })
     .catch(err => console.error(err));
 
-    fetch(`${API_URL}/api/v1/installments`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => res.json())
-    .then(data => setInstallments(data))
+  fetch(`${API_URL}/api/v1/installments`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+    .then(handleAuthError)
+    .then(data => { if (Array.isArray(data)) setInstallments(data); })
     .catch(err => console.error(err));
   }, [refreshKey]);
 
@@ -58,11 +67,11 @@ function App() {
     <BrowserRouter basename="/IPDdemo">
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
 
         <Route path="/dashboard" element={
+         <ProtectedRoute>
           <DashboardLayout>
             <Home
               totalBalance={totalBalance}
@@ -72,32 +81,39 @@ function App() {
               refreshData={refreshData}
             />
           </DashboardLayout>
+         </ProtectedRoute>
         } />
         
         <Route path="/income" element={
-          <DashboardLayout>
+          <ProtectedRoute>
+           <DashboardLayout>
             <Income 
               totalIncome={totalIncome}
               transactions={transactions}
               refreshData={refreshData}
             />
-          </DashboardLayout>
+           </DashboardLayout>
+          </ProtectedRoute>
         } />
         
         <Route path="/expense" element={
-          <DashboardLayout>
+          <ProtectedRoute>
+           <DashboardLayout>
             <Expense 
               totalExpenses={totalExpenses}
               transactions={transactions}
               refreshData={refreshData}
             />
-          </DashboardLayout>
+           </DashboardLayout>
+          </ProtectedRoute>
         } />
 
         <Route path="/admin" element={
+         <ProtectedRoute>
           <DashboardLayout>
             <Admin />
-          </DashboardLayout>
+           </DashboardLayout>
+         </ProtectedRoute>
         } />
       </Routes>
     </BrowserRouter>
@@ -115,7 +131,13 @@ function DashboardLayout({ children }) {
         </div>
       </div>
     </div>
+
   );
+}
+
+function ProtectedRoute({ children }) {
+  const token = localStorage.getItem('token');
+  return token ? children : <Navigate to="/login" />;
 }
 
 export default App;

@@ -197,24 +197,21 @@ function Login() {
       const data = await response.json();
       localStorage.setItem('token', data.token);
       localStorage.setItem('email', email);
-      
 
       try {
-        const userResponse = await fetch(`${API_URL}/api/v1/users`, {
-              headers: { 'Authorization': `Bearer ${data.token}` }
+        const userResponse = await fetch(`${API_URL}/api/v1/me`, {
+          headers: { 'Authorization': `Bearer ${data.token}` }
         });
-          if (userResponse.ok) {
-          const users = await userResponse.json();
-          const currentUser = users.find(u => u.email === email);
-          if (currentUser) {
-              localStorage.setItem('name', currentUser.name);
-              localStorage.setItem('userId', currentUser.id);
-              localStorage.setItem('role', currentUser.role);
-          }
+        if (userResponse.ok) {
+          const currentUser = await userResponse.json();
+          localStorage.setItem('name', currentUser.name);
+          localStorage.setItem('userId', currentUser.id);
+          localStorage.setItem('role', currentUser.role);
         }
       } catch (err) {
-          console.error('LOGIN ERROR:', err);
-          setError('Something went wrong. Please try again.');
+        console.error('LOGIN ERROR:', err);
+        setError('Something went wrong. Please try again.');
+        return;
       }
 
       navigate('/dashboard');
