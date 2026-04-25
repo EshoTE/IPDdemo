@@ -22,6 +22,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
   const [installments, setInstallments] = useState([{ label: '', amount: '', date: '' }]);
   const [termPlans, setTermPlans] = useState([]);
   const [activePlan, setActivePlan] = useState(null);
+  const [deleteTermPlanConfirm, setDeleteTermPlanConfirm] = useState(null);
   const [activePlanInstallments, setActivePlanInstallments] = useState([]);
 
   const fetchTermPlans = async () => {
@@ -164,6 +165,22 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     if (editingId === id) handleCancelEdit();
     refreshData();
   };
+
+  const handleDeleteTermPlan = async (id) => {
+    const token = localStorage.getItem('token');
+    await fetch(`${API_URL}/api/v1/termPlan/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    setDeleteTermPlanConfirm(null);
+    localStorage.removeItem('activeTermPlanId');
+    await fetchTermPlans();
+    await fetchInstallments();
+    refreshData();
+    if (termPlans.length <= 1) {
+      setActivePlan(null);
+    }
+};
 
   const addInstallment = () => {
     setInstallments([...installments, { label: '', amount: '', date: '' }]);
@@ -421,7 +438,11 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
                   className="flex-1 py-2.5 bg-[#c896a0] text-[#0c0e18] rounded-lg hover:opacity-90 transition-colors text-sm font-semibold">
                   New Plan
                 </button>
-              </div>
+                <button onClick={() => setDeleteTermPlanConfirm(activePlan.id)}
+                  className="px-4 py-2.5 bg-[rgba(208,136,136,0.1)] border border-[rgba(208,136,136,0.18)] text-[#d08888] rounded-lg hover:bg-[rgba(208,136,136,0.18)] transition-colors text-sm font-medium">
+                  Delete
+                </button>
+            </div>
             </div>
           ) : (
             <div>
@@ -613,6 +634,33 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
               <button onClick={handleTermPlanSubmit}
                 className="flex-1 py-3 bg-[#c896a0] text-[#0c0e18] rounded-lg hover:opacity-90 transition-colors font-semibold">
                 {isEditing ? 'Update Plan' : 'Save Term Plan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteTermPlanConfirm && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-[#0c0e18] border border-[rgba(208,136,136,0.2)] rounded-2xl p-8 w-full max-w-sm">
+            <div className="flex flex-col items-center mb-6">
+              <div className="w-14 h-14 bg-[rgba(208,136,136,0.1)] border border-[rgba(208,136,136,0.2)] rounded-full flex items-center justify-center mb-4">
+                <span className="text-xl">⚠️</span>
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">Delete Term Plan?</h3>
+              <p className="text-sm text-[rgba(255,255,255,0.5)] text-center">
+                This will permanently delete this term plan and all its instalments.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTermPlanConfirm(null)}
+                className="flex-1 py-2.5 bg-[rgba(200,150,160,0.1)] border border-[rgba(200,150,160,0.18)] text-[#f0e8ea] rounded-lg hover:bg-[rgba(200,150,160,0.15)] transition-colors text-sm">
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteTermPlan(deleteTermPlanConfirm)}
+                className="flex-1 py-2.5 bg-[#d08888] text-white rounded-lg hover:opacity-90 transition-colors text-sm font-semibold">
+                Delete
               </button>
             </div>
           </div>
