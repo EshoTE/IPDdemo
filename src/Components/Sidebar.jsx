@@ -80,6 +80,11 @@ function Sidebar() {
         body: JSON.stringify(updateBody)
       });
 
+      if (res.status === 409) {
+        setError('That email is already registered to another account');
+        return;
+      }
+
       if (!res.ok) {
         setError('Failed to update profile. Please try again.');
         return;
