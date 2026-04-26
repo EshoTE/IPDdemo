@@ -3,12 +3,17 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { SIDE_MENU_DATA } from "../utils/data";
 import API_URL from '../config';
 
+// Sidebar with profile management modal and account deletion
 function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const userName = localStorage.getItem('name') || localStorage.getItem('email') || 'User';
+
+  // Modal visibility state
   const [showProfile, setShowProfile] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Profile form state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -26,10 +31,12 @@ function Sidebar() {
   };
 
   const handleLogout = () => {
+    // Clear all session state and force a hard redirect to avoid stale React state
     localStorage.clear();
     window.location.href = '/IPDdemo/login';
   };
 
+  // Pre-populate the profile modal with current user details
   const openProfile = () => {
     setName(localStorage.getItem('name') || '');
     setEmail(localStorage.getItem('email') || '');
@@ -80,6 +87,7 @@ function Sidebar() {
         body: JSON.stringify(updateBody)
       });
 
+      // Backend returns 409 when the new email is already taken
       if (res.status === 409) {
         setError('That email is already registered to another account');
         return;
@@ -106,6 +114,7 @@ function Sidebar() {
     const userId = localStorage.getItem('userId');
 
     try {
+      // Backend cascades the delete to transactions, term plans and instalments
       const res = await fetch(`${API_URL}/api/v1/user/${userId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -125,6 +134,7 @@ function Sidebar() {
     }
   };
 
+  // Map the current URL path to the matching menu label so it gets highlighted
   const getActiveMenu = () => {
     if (location.pathname === '/dashboard') return 'Dashboard';
     if (location.pathname === '/income') return 'Income';
@@ -135,12 +145,15 @@ function Sidebar() {
 
   const activeMenu = getActiveMenu();
 
+  // Shared input styling reused across the profile form
   const inputClass = "w-full p-3 bg-[#1a1c2e] border border-[rgba(200,150,160,0.12)] rounded-lg text-[#f0e8ea] placeholder-[rgba(240,232,234,0.3)] focus:outline-none focus:border-[rgba(200,150,160,0.3)] transition-colors";
 
   return (
     <>
+      {/* Sidebar navigation */}
       <div className="w-64 h-[calc(100vh-80px)] bg-[#0c0e18] border-r border-[rgba(200,150,160,0.25)] p-5 sticky top-20 z-20">
 
+        {/* User avatar and name (clickable to open profile modal) */}
         <div className="flex flex-col items-center justify-center gap-3 mt-3 mb-7">
           <div className="w-20 h-20 bg-[rgba(200,150,160,0.08)] border border-[rgba(200,150,160,0.15)] rounded-full flex items-center justify-center">
             <span className="text-3xl">👤</span>
@@ -153,6 +166,7 @@ function Sidebar() {
           </button>
         </div>
 
+        {/* Navigation menu items - Admin tab only renders for ADMIN role */}
         {SIDE_MENU_DATA
           .filter(item => !item.adminOnly || localStorage.getItem('role') === 'ADMIN')
           .map((item, index) => (
@@ -172,6 +186,7 @@ function Sidebar() {
 
       </div>
 
+      {/* Profile settings modal */}
       {showProfile && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-[#0c0e18] border border-[rgba(200,150,160,0.15)] rounded-2xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
@@ -225,6 +240,7 @@ function Sidebar() {
               />
             </div>
 
+            {/* Password change section - optional, only sent if new password provided */}
             <div className="mb-4 pt-4 border-t border-[rgba(200,150,160,0.08)]">
               <p className="text-xs text-[rgba(255,255,255,0.4)] mb-3">Change password (leave blank to keep current)</p>
 
@@ -264,6 +280,7 @@ function Sidebar() {
               </button>
             </div>
 
+            {/* Delete account button at the bottom of the profile modal */}
             <div className="mt-4 pt-4 border-t border-[rgba(200,150,160,0.08)]">
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -275,6 +292,7 @@ function Sidebar() {
         </div>
       )}
 
+      {/* Delete account confirmation modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60]">
           <div className="bg-[#0c0e18] border border-[rgba(208,136,136,0.2)] rounded-2xl p-8 w-full max-w-sm">

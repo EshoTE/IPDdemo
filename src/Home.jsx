@@ -4,16 +4,20 @@ import SummaryCards from './Components/SummaryCards';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import API_URL from './config';
 
+// Dashboard page - summary cards, recent transactions, financial breakdown modal, CSV export
 function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
   const [transactions, setTransactions] = useState([]);
   const [termPlan, setTermPlan] = useState(null);
   const [installments, setInstallments] = useState([]);
+
+  // Modal visibility and sort/tab state
   const [showAllTransactions, setShowAllTransactions] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
   const [breakdownTab, setBreakdownTab] = useState('expenses');
   const navigate = useNavigate();
 
+  // Initial data fetch on mount
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userId = parseInt(localStorage.getItem('userId'));
@@ -30,6 +34,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
     })
       .then(res => res.json())
       .then(data => {
+        // Use the active plan from localStorage if set, otherwise the most recent
         const activeId = parseInt(localStorage.getItem('activeTermPlanId'));
         const userPlan = activeId ? data.find(p => p.id === activeId) : data[data.length - 1];
         setTermPlan(userPlan || data[data.length - 1] || null);
@@ -46,6 +51,8 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
 
   const today = new Date();
 
+  // Convert past instalments into pseudo-transactions so they appear in the recent list
+  // alongside regular income/expense entries with an "Instalment" badge
   const pastInstallments = installments
     .filter(i => new Date(i.date) <= today)
     .map(i => ({
@@ -58,6 +65,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
 
   const allTransactionsUnsorted = [...transactions, ...pastInstallments];
 
+  // Sort the unified list based on the active sort filter
   const sortTransactions = (list) => {
     switch (sortBy) {
       case 'newest':
@@ -75,6 +83,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
 
   const allTransactions = sortTransactions(allTransactionsUnsorted);
 
+  // Find the next upcoming instalment for the dashboard banner
   const upcomingInstallments = installments
     .filter(i => new Date(i.date) >= today)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -84,6 +93,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
     ? Math.ceil((new Date(nextInstallment.date) - today) / (1000 * 60 * 60 * 24))
     : null;
 
+  // Calculate this week's spending against the weekly budget
   const weeklyExpenses = transactions
     .filter(t => {
       if (t.type !== 'EXPENSE') return false;
@@ -98,6 +108,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
     ? termPlan.weeklyBudget - weeklyExpenses
     : 0;
 
+  // Aggregate expenses by category for the pie chart - returns sorted {name, value} array
   const categoryData = (() => {
     const categories = {};
     transactions.filter(t => t.type === 'EXPENSE').forEach(t => {
@@ -109,12 +120,14 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
       .sort((a, b) => b.value - a.value);
   })();
 
+  // Bucket transactions by Monday-anchored week for the bar chart - returns last 8 weeks
   const weeklyData = (() => {
     const weeks = {};
     const allTx = [...transactions];
     allTx.forEach(t => {
       const d = new Date(t.date);
       const weekStart = new Date(d);
+      // Anchor to the Monday of that week
       weekStart.setDate(d.getDate() - d.getDay() + 1);
       const key = weekStart.toISOString().split('T')[0];
       if (!weeks[key]) weeks[key] = { week: key, income: 0, expenses: 0 };
@@ -132,11 +145,16 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
       }));
   })();
 
+  // Pie chart segment colour palette
   const COLORS = ['#c896a0', '#8ab8a0', '#96aac8', '#dcb464', '#d08888', '#a088c8', '#88b8d0', '#c8a088'];
 
+  // CSV export - builds a transaction log + summary + category breakdown,
+  // delivers it via the Blob API with a personalised filename
   const handleExportCSV = () => {
     const userName = localStorage.getItem('name') || 'User';
     const headers = ['Date', 'Type', 'Description', 'Category', 'Amount (£)'];
+
+    // Transaction log section (sorted newest first, expenses prefixed with negative sign)
     const rows = allTransactionsUnsorted
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .map(t => [
@@ -147,6 +165,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
         t.type === 'EXPENSE' ? `-${t.amount.toFixed(2)}` : t.amount.toFixed(2)
       ]);
 
+    // Summary section with totals
     const summaryRows = [
       [],
       ['SUMMARY'],
@@ -155,6 +174,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
       ['Total Balance', '', '', '', totalBalance.toFixed(2)],
     ];
 
+    // Term plan details if one exists
     if (termPlan) {
       summaryRows.push(
         [],
@@ -165,6 +185,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
       );
     }
 
+    // Spending-by-category breakdown
     if (categoryData.length > 0) {
       summaryRows.push(
         [],
@@ -174,6 +195,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
       );
     }
 
+    // Combine all sections and trigger the download via a temporary anchor element
     const csvContent = [
       headers.join(','),
       ...rows.map(r => r.join(',')),
@@ -186,9 +208,11 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
     a.href = url;
     a.download = `${userName} - TermTrack Report.csv`;
     a.click();
+    // Free the object URL after the download has been triggered
     URL.revokeObjectURL(url);
   };
 
+  // Render helper for a single transaction row (used in both the recent list and the modal)
   const renderTransaction = (t) => (
     <div key={t.id}
       className="flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] p-3 rounded-xl transition-all duration-300"
@@ -226,6 +250,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
     </div>
   );
 
+  // Helper for sort filter button styling - highlights the active option
   const filterBtnClass = (value) =>
     `px-3 py-1.5 text-xs rounded-lg transition-all duration-200 ${
       sortBy === value
@@ -235,6 +260,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
 
   return (
     <div className="min-h-screen bg-[#0c0e18] p-8">
+      {/* Background glow effect */}
       <div className="fixed top-[-15%] right-[-8%] w-[500px] h-[500px] rounded-full pointer-events-none"
         style={{ background: 'radial-gradient(circle, rgba(200,150,160,0.04) 0%, transparent 70%)' }} />
 
@@ -243,6 +269,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
         <p className="text-sm text-[rgba(240,232,234,0.35)] mt-1">Your financial overview</p>
       </div>
 
+      {/* Term plan banner - shows year, weekly budget, next instalment countdown, term dates */}
       {termPlan && (
         <div className="border rounded-2xl p-6 mb-6"
           style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)' }}>
@@ -298,6 +325,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
         </div>
       )}
 
+      {/* Balance / income / expenses summary cards */}
       <SummaryCards
         totalBalance={totalBalance}
         totalIncome={totalIncome}
@@ -305,6 +333,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
       />
 
       <div className="grid grid-cols-[1.3fr_1fr] gap-6 mt-6">
+        {/* Recent transactions panel */}
         <div className="border rounded-2xl p-6"
           style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)' }}>
           <div className="flex justify-between items-center mb-5">
@@ -326,6 +355,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
           </div>
         </div>
 
+        {/* Financial overview panel with progress bars */}
         <div className="border rounded-2xl p-6"
           style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)' }}>
           <h2 className="text-lg font-bold text-white mb-5">Financial Overview</h2>
@@ -389,6 +419,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
         </div>
       </div>
 
+      {/* "View all" transactions modal with sort filters */}
       {showAllTransactions && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-[#0c0e18] border border-[rgba(200,150,160,0.15)] rounded-2xl p-8 w-full max-w-2xl max-h-[80vh] flex flex-col">
@@ -426,6 +457,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
         </div>
       )}
 
+      {/* Financial Breakdown modal - pie chart, bar chart, top transactions, CSV export */}
       {showBreakdown && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-[#0c0e18] border border-[rgba(200,150,160,0.15)] rounded-2xl p-8 w-full max-w-3xl max-h-[85vh] flex flex-col">
@@ -446,6 +478,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
 
             <div className="flex-1 overflow-y-auto pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(200,150,160,0.2) transparent' }}>
 
+              {/* Reference summary cards at the top of the modal */}
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-xl p-4">
                   <p className="text-xs text-[rgba(255,255,255,0.4)] uppercase tracking-widest mb-1">Total Income</p>
@@ -467,7 +500,9 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
                 </div>
               </div>
 
+              {/* Pie chart and bar chart side by side */}
               <div className="grid grid-cols-2 gap-6 mb-6">
+                {/* Spending by category - donut chart with legend */}
                 <div className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-xl p-5">
                   <h3 className="text-sm font-semibold text-white mb-4">Spending by Category</h3>
                   {categoryData.length > 0 ? (
@@ -512,6 +547,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
                   )}
                 </div>
 
+                {/* Weekly overview - grouped bar chart with last 8 weeks of income vs expenses */}
                 <div className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-xl p-5">
                   <h3 className="text-sm font-semibold text-white mb-4">Weekly Overview</h3>
                   {weeklyData.length > 0 ? (
@@ -545,6 +581,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
                 </div>
               </div>
 
+              {/* Largest transactions tabbed view - top 5 expenses or top 5 income */}
               <div className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-xl p-5">
                 <div className="flex items-center gap-3 mb-4">
                   <button
@@ -592,6 +629,7 @@ function Home({ totalBalance, totalIncome, totalExpenses, refreshData }) {
                     </>
                   ) : (
                     <>
+                      {/* Income tab merges manual income transactions with past instalments */}
                       {[...transactions.filter(t => t.type === 'INCOME'), ...pastInstallments]
                         .sort((a, b) => b.amount - a.amount)
                         .slice(0, 5)

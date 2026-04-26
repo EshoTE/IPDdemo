@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import API_URL from '../config';
 
+// Admin dashboard - SQL-style table viewer for the five core entities, with user delete
 function Admin() {
   const [activeTab, setActiveTab] = useState('user');
   const [data, setData] = useState([]);
@@ -8,6 +9,7 @@ function Admin() {
   const [query, setQuery] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
+  // Tab definitions paired with their backend admin endpoint
   const tables = [
     { key: 'user', label: 'Users', endpoint: '/api/v1/admin/users' },
     { key: 'transaction', label: 'Transactions', endpoint: '/api/v1/admin/transactions' },
@@ -16,6 +18,7 @@ function Admin() {
     { key: 'budget', label: 'Budgets', endpoint: '/api/v1/admin/budgets' },
   ];
 
+  // Fetch the rows for whichever table tab is currently active
   const fetchData = async (endpoint) => {
     setLoading(true);
     const token = localStorage.getItem('token');
@@ -37,11 +40,13 @@ function Admin() {
     setLoading(false);
   };
 
+  // Re-fetch whenever the user switches tabs
   useEffect(() => {
     const table = tables.find(t => t.key === activeTab);
     if (table) fetchData(table.endpoint);
   }, [activeTab]);
 
+  // Delete a user - backend cascades to their transactions, term plans and instalments
   const handleDeleteUser = async (id) => {
     const token = localStorage.getItem('token');
     try {
@@ -57,6 +62,7 @@ function Admin() {
     }
   };
 
+  // Build the column list dynamically from the first row, hiding Spring Security internals
   const getColumns = () => {
     if (data.length === 0) return [];
     const exclude = ['authorities', 'accountNonExpired', 'accountNonLocked', 'credentialsNonExpired', 'enabled', 'username'];
@@ -65,6 +71,7 @@ function Admin() {
 
   const columns = getColumns();
 
+  // Filter rows client-side based on the search query (matches against any column)
   const filteredData = query.trim()
     ? data.filter(row =>
         columns.some(col => {
@@ -74,6 +81,7 @@ function Admin() {
       )
     : data;
 
+  // Format cell values for display - truncates long password hashes, stringifies nested objects
   const formatCell = (value, col) => {
     if (value === null || value === undefined) return '-';
     if (col === 'password') return value.substring(0, 20) + '...';
@@ -90,7 +98,7 @@ function Admin() {
 
       <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl overflow-hidden">
 
-        {/* Table Tabs */}
+        {/* Table tabs - one per core entity */}
         <div className="flex border-b border-[rgba(200,150,160,0.08)]">
           {tables.map(table => (
             <button
@@ -107,7 +115,7 @@ function Admin() {
           ))}
         </div>
 
-        {/* Query Bar & Stats */}
+        {/* Query bar and row count */}
         <div className="p-4 border-b border-[rgba(200,150,160,0.08)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-xs text-[rgba(255,255,255,0.3)] uppercase tracking-widest">
@@ -126,7 +134,7 @@ function Admin() {
           />
         </div>
 
-        {/* SQL-style display */}
+        {/* SQL-style indicator showing which table is being viewed */}
         <div className="p-4 border-b border-[rgba(200,150,160,0.08)]">
           <div className="bg-[#1a1c2e] border border-[rgba(200,150,160,0.08)] rounded-lg px-4 py-2.5">
             <code className="text-sm text-[rgba(255,255,255,0.5)]">
@@ -135,7 +143,7 @@ function Admin() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Data table - dynamically renders columns based on the row schema */}
         <div className="overflow-x-auto">
           {loading ? (
             <div className="py-16 text-center">
@@ -154,6 +162,7 @@ function Admin() {
                       {col}
                     </th>
                   ))}
+                  {/* Extra column for the delete button on the users tab */}
                   {activeTab === 'user' && (
                     <th className="px-4 py-3 text-left text-xs font-medium text-[rgba(255,255,255,0.4)] uppercase tracking-wider w-16">
                     </th>
@@ -165,6 +174,7 @@ function Admin() {
                   <tr key={i} className="border-b border-[rgba(200,150,160,0.04)] hover:bg-[rgba(200,150,160,0.03)] transition-colors">
                     {columns.map(col => (
                       <td key={col} className="px-4 py-3 text-sm text-[rgba(255,255,255,0.7)] font-mono max-w-[200px] truncate">
+                        {/* Special rendering for role badge, money columns, default formatter otherwise */}
                         {col === 'role' ? (
                           <span className={`px-2 py-0.5 rounded text-xs ${
                             row[col] === 'ADMIN'
@@ -174,8 +184,12 @@ function Admin() {
                             {row[col]}
                           </span>
                         ) : col === 'amount' || col === 'weeklyBudget' || col === 'totalBudget' ? (
-                          <span className="text-[#8ab8a0]">
-                            £{Number(row[col]).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                          <span className={
+                            col === 'amount' && row.type === 'EXPENSE'
+                            ? 'text-[#d08888]'
+                            : 'text-[#8ab8a0]'
+                           }>
+                            £{Number(row[col]).toLocaleString('en-GB', { minimumFractionDigits: 2 })}  
                           </span>
                         ) : (
                           formatCell(row[col], col)
@@ -199,7 +213,7 @@ function Admin() {
         </div>
       </div>
 
-      {/* Delete Confirmation */}
+      {/* Delete user confirmation modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-[#0c0e18] border border-[rgba(208,136,136,0.2)] rounded-2xl p-8 w-full max-w-sm">

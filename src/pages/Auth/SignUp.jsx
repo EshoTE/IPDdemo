@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API_URL from '../../config';
 
+// Colour palette
 const C = {
   bg: '#0c0e18',
   bgDeep: '#080a12',
@@ -15,6 +16,7 @@ const C = {
   cardBorder: 'rgba(200,150,160,0.08)',
 };
 
+// Floating decoration card with hover animation
 function FloatingCard({ children, delay = 0, x = 0, y = 0, duration = 6 }) {
   return (
     <div style={{
@@ -26,6 +28,7 @@ function FloatingCard({ children, delay = 0, x = 0, y = 0, duration = 6 }) {
   );
 }
 
+// Animated dashboard mockup shown next to the signup form
 function AnimatedShowcase() {
   const [visibleTx, setVisibleTx] = useState(0);
   const [balance, setBalance] = useState(0);
@@ -38,6 +41,7 @@ function AnimatedShowcase() {
     { desc: 'Gym', amount: '-£24.99', color: C.expense, icon: '💪' },
   ];
 
+  // Cycle through transactions one by one
   useEffect(() => {
     const txInterval = setInterval(() => {
       setVisibleTx(v => (v + 1) % (transactions.length + 1));
@@ -45,6 +49,7 @@ function AnimatedShowcase() {
     return () => clearInterval(txInterval);
   }, []);
 
+  // Counter animation for the balance figure
   useEffect(() => {
     const target = 1247.83;
     const step = target / 40;
@@ -59,6 +64,7 @@ function AnimatedShowcase() {
 
   return (
     <div style={{ position: 'relative', width: 400, height: 500 }}>
+      {/* Main dashboard card */}
       <div style={{
         position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
         width: 340, borderRadius: 20,
@@ -80,6 +86,7 @@ function AnimatedShowcase() {
           }}>📊</div>
         </div>
 
+        {/* Income/expense summary cards */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           {[
             { label: 'Income', value: '£4,085', color: C.income, bg: 'rgba(138,184,160,0.08)' },
@@ -95,6 +102,7 @@ function AnimatedShowcase() {
           ))}
         </div>
 
+        {/* Recent transactions list */}
         <div style={{ fontSize: 11, color: 'rgba(240,232,234,0.3)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>Recent</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {transactions.map((tx, i) => (
@@ -116,6 +124,7 @@ function AnimatedShowcase() {
         </div>
       </div>
 
+      {/* Floating accent cards around the main dashboard */}
       <FloatingCard x={-30} y={280} delay={0} duration={7}>
         <div style={{
           padding: '10px 16px', borderRadius: 12,
@@ -175,6 +184,7 @@ function AnimatedShowcase() {
   );
 }
 
+// Sign up page component
 function SignUp() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
@@ -190,6 +200,7 @@ function SignUp() {
   const handleSignUp = async (e) => {
     e.preventDefault();
     setError('');
+    // Clear any existing session before creating a new account
     localStorage.clear();
 
     if (!name.trim() || !email.trim() || !password.trim()) {
@@ -217,6 +228,7 @@ function SignUp() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('email', email);
 
+      // Fetch the new user's profile so we know their ID and role
       try {
         const userResponse = await fetch(`${API_URL}/api/v1/me`, {
           headers: { 'Authorization': `Bearer ${data.token}` }
@@ -233,12 +245,14 @@ function SignUp() {
         return;
       }
 
+      // Hard redirect forces fresh state on the dashboard
       window.location.href = '/IPDdemo/dashboard';
     } catch (err) {
       setError('Something went wrong. Please try again.');
     }
   };
 
+  // Helper for the staggered fade-in animations
   const fadeIn = (delay) => ({
     opacity: mounted ? 1 : 0,
     transform: mounted ? 'translateY(0)' : 'translateY(16px)',
@@ -258,6 +272,7 @@ function SignUp() {
         }
       `}</style>
 
+      {/* Left side - signup form */}
       <div className="w-1/2 flex items-center justify-center p-12 relative">
         <div style={{
           position: 'absolute', top: '20%', left: '-10%', width: 300, height: 300, borderRadius: '50%',
@@ -285,6 +300,7 @@ function SignUp() {
             <p style={{ color: C.muted }}>Join us today and take control of your finances.</p>
           </div>
 
+          {/* Profile picture placeholder */}
           <div style={fadeIn(150)} className="flex justify-center mb-6">
             <div className="relative">
               <div className="w-24 h-24 rounded-full flex items-center justify-center"
@@ -355,8 +371,10 @@ function SignUp() {
         </div>
       </div>
 
+      {/* Right side - animated dashboard preview */}
       <div className="w-1/2 flex items-center justify-center p-12 relative overflow-hidden"
         style={{ background: C.bgDeep, borderLeft: `1px solid ${C.cardBorder}` }}>
+        {/* Background glow effects */}
         <div style={{
           position: 'absolute', top: '-10%', right: '-5%', width: 400, height: 400, borderRadius: '50%',
           background: 'radial-gradient(circle, rgba(200,150,160,0.05) 0%, transparent 70%)',
@@ -367,6 +385,7 @@ function SignUp() {
           background: 'radial-gradient(circle, rgba(138,184,160,0.04) 0%, transparent 70%)',
           animation: 'glowPulse 10s ease-in-out 2s infinite', pointerEvents: 'none',
         }} />
+        {/* Subtle dot grid pattern */}
         <div style={{
           position: 'absolute', inset: 0, opacity: 0.015,
           backgroundImage: 'radial-gradient(circle, rgba(200,150,160,0.8) 1px, transparent 1px)',

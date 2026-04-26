@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { FaDeleteLeft } from "react-icons/fa6";
 import API_URL from '../config';
 
+// Expense management page with spending alert algorithm
 function Expense({ totalExpenses, transactions: transactionsProp, refreshData }) {
   const [transactions, setTransactions] = useState([]);
+
+  // Form state for add/edit expense
   const [category, setCategory] = useState('');
   const [customCategory, setCustomCategory] = useState('');
   const [description, setDescription] = useState('');
@@ -11,14 +14,19 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
   const [date, setDate] = useState('');
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
+
+  // Preset categories merged with user-defined custom ones (no separate categories table)
   const [categories, setCategories] = useState([
     'Groceries', 'Rent', 'Transport', 'Eating Out', 'Entertainment', 'Bills', 'Shopping', 'Other'
   ]);
   const [showCustomInput, setShowCustomInput] = useState(false);
+
+  // Data needed by the alert algorithm
   const [termPlan, setTermPlan] = useState(null);
   const [installments, setInstallments] = useState([]);
   const [alerts, setAlerts] = useState([]);
 
+  // Initial data fetch on mount
   useEffect(() => {
     const token = localStorage.getItem('token');
 
@@ -29,6 +37,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     .then(data => {
       const expenses = data.filter(t => t.type === 'EXPENSE');
       setTransactions(expenses);
+      // Merge any historical custom categories so they persist across sessions
       const existingCategories = [...new Set(expenses.map(t => t.category).filter(Boolean))];
       const merged = [...new Set([...categories, ...existingCategories])];
       setCategories(merged);
@@ -40,6 +49,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     })
     .then(res => res.json())
     .then(data => {
+      // Use the active plan from localStorage if set, otherwise fall back to the most recent
       const activeId = parseInt(localStorage.getItem('activeTermPlanId'));
       const plan = activeId ? data.find(p => p.id === activeId) : data[data.length - 1];
       setTermPlan(plan || null);
@@ -54,6 +64,9 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     .catch(err => console.error(err));
   }, []);
 
+  // Spending alert algorithm - re-runs whenever transactions, term plan or instalments change.
+  // Evaluates four conditions in sequence: weekly budget thresholds, upcoming instalments,
+  // category concentration, and the on-track fallback.
   useEffect(() => {
     if (!termPlan) return;
     const newAlerts = [];
@@ -61,12 +74,14 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
 
+    // Sum the user's expense transactions from the last 7 days
     const weeklySpent = transactions
       .filter(t => new Date(t.date) >= weekAgo)
       .reduce((sum, t) => sum + t.amount, 0);
 
     const weeklyBudget = termPlan.weeklyBudget || 0;
 
+    // Condition 1: weekly budget thresholds (graduated alerts at 100%, 80%, 50%)
     if (weeklyBudget > 0) {
       const percentUsed = (weeklySpent / weeklyBudget) * 100;
 
@@ -91,6 +106,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
       }
     }
 
+    // Condition 2: instalments arriving within the next 14 days, sorted chronologically
     const upcomingInstallments = installments
       .filter(i => {
         const instDate = new Date(i.date);
@@ -108,6 +124,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
       });
     });
 
+    // Condition 3: flag if any single category dominates total spending (40%+)
     const categorySpending = {};
     transactions.forEach(t => {
       if (t.category) {
@@ -129,6 +146,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
       }
     }
 
+    // Condition 4: positive fallback if no other alerts triggered
     if (newAlerts.length === 0 && weeklyBudget > 0) {
       newAlerts.push({
         type: 'success',
@@ -140,6 +158,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     setAlerts(newAlerts);
   }, [transactions, termPlan, installments]);
 
+  // Show inline input when the user picks "+ Add custom category"
   const handleCategoryChange = (e) => {
     const value = e.target.value;
     if (value === '__custom__') {
@@ -160,6 +179,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     }
   };
 
+  // Pre-populate the form with the existing transaction's values
   const handleEditExpense = (transaction) => {
     setEditingId(transaction.id);
     setDescription(transaction.description || '');
@@ -179,6 +199,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     setError('');
   };
 
+  // Handles both create (POST) and update (PUT) depending on editingId
   const handleAddExpense = async () => {
     const missing = [];
     if (!category.trim()) missing.push('Category');
@@ -225,6 +246,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
       });
     }
 
+    // Re-fetch to pick up the new/updated transaction, then sync App.jsx via refreshData
     const updatedResponse = await fetch(`${API_URL}/api/v1/transactions`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -250,6 +272,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
 
   const totalExpensesLocal = transactions.reduce((sum, t) => sum + t.amount, 0);
 
+  // Maps an alert type to its colour scheme and icon
   const getAlertStyles = (type) => {
     switch (type) {
       case 'danger':
@@ -288,6 +311,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
     <div className="min-h-screen bg-[#0c0e18] p-6">
       <h1 className="text-2xl font-bold text-[#f0e8ea] mb-6">Expense Management</h1>
 
+      {/* Add/edit expense form */}
       <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-[#f0e8ea]">{editingId ? 'Edit Expense' : 'Add Expense'}</h2>
@@ -387,6 +411,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
         </button>
       </div>
 
+      {/* Expense history list with edit/delete actions */}
       <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[#f0e8ea]">Expense History</h2>
@@ -440,6 +465,7 @@ function Expense({ totalExpenses, transactions: transactionsProp, refreshData })
         </div>
       </div>
 
+      {/* Spending alerts panel - rendered from the alerts state computed by the algorithm above */}
       <div className="bg-[rgba(200,150,160,0.04)] border border-[rgba(200,150,160,0.1)] rounded-2xl p-6 mt-6">
         <h2 className="text-xl font-bold text-[#f0e8ea] mb-4">Spending Alerts</h2>
         <div className="flex flex-col gap-3">

@@ -4,9 +4,7 @@ import emailjs from '@emailjs/browser';
 import stockVideo from '/13109981_1920_1080_25fps.mp4';
 import stockPic from '/Group-of-around-20-students-in-Brussels-as-part-of-the-Westminster-Work.jpg';
 
-/* ──────────────────────────────────────────────
-   Navy & Dusty Rose palette constants
-   ────────────────────────────────────────────── */
+// Colour palette
 const C = {
   bg: '#0c0e18',
   bgDeep: '#080a12',
@@ -25,9 +23,7 @@ const C = {
   cardBorder: 'rgba(200,150,160,0.08)',
 };
 
-/* ──────────────────────────────────────────────
-   Demo data for animated product mockup
-   ────────────────────────────────────────────── */
+// Demo data for the animated product mockup
 const DEMO_EXPENSES = [
   { category: 'Food', amount: 8.50, icon: '🍔', color: C.accent },
   { category: 'Transport', amount: 4.20, icon: '🚌', color: '#a0a8c8' },
@@ -47,9 +43,7 @@ const DEMO_CHART = [
 ];
 const maxSpent = Math.max(...DEMO_CHART.map(d => d.spent));
 
-/* ──────────────────────────────────────────────
-   Animated product demo
-   ────────────────────────────────────────────── */
+// Animated product demo component
 function ProductDemo() {
   const [activeExpense, setActiveExpense] = useState(-1);
   const [showAlert, setShowAlert] = useState(false);
@@ -194,9 +188,7 @@ function ProductDemo() {
   );
 }
 
-/* ──────────────────────────────────────────────
-   Landing page
-   ────────────────────────────────────────────── */
+// Landing page
 function Landing() {
   const refForm = useRef();
   const navigate = useNavigate();
@@ -214,7 +206,7 @@ function Landing() {
   return (
     <div className="relative">
 
-      {/* ═══ HERO ═══ */}
+      {/* Hero */}
       <div className="relative h-screen overflow-hidden">
         <video autoPlay loop muted playsInline className="absolute top-0 left-0 w-full h-full object-cover -z-10">
           <source src={stockVideo} type="video/mp4" />
@@ -250,7 +242,7 @@ function Landing() {
         </div>
       </div>
 
-      {/* ═══ PRODUCT DEMO ═══ */}
+      {/* Product demo section */}
       <section id="demo" className="py-24 px-8" style={{ background: C.bgDeep }}>
         <div className="max-w-5xl mx-auto">
           <p className="text-sm font-medium tracking-widest uppercase mb-3 text-center" style={{ color: C.accent }}>See it in action</p>
@@ -274,7 +266,7 @@ function Landing() {
         </div>
       </section>
 
-      {/* ═══ ABOUT + CONTACT ═══ */}
+      {/* About + contact section */}
       <section id="about" className="py-24" style={{ background: C.bg, borderTop: `1px solid ${C.cardBorder}` }}>
         <div className="max-w-5xl mx-auto px-8">
           {/* About */}
@@ -329,7 +321,7 @@ function Landing() {
         </div>
       </section>
 
-      {/* ═══ FOOTER ═══ */}
+      {/* Footer */}
       <footer className="py-6 px-8" style={{ background: C.bgDeep, borderTop: `1px solid ${C.cardBorder}` }}>
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <span className="text-sm" style={{ color: C.dim }}>© 2026 TermTrack</span>

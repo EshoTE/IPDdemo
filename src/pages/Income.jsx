@@ -2,29 +2,39 @@ import { useState, useEffect } from 'react';
 import { FaDeleteLeft } from "react-icons/fa6";
 import API_URL from '../config';
 
+// Income management page - manual income entries plus term plan & instalment setup
 function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
   const [transactions, setTransactions] = useState([]);
   const [pastInstallments, setPastInstallments] = useState([]);
+
+  // Income form state
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
+
+  // Term plan modal state
   const [termError, setTermError] = useState('');
   const [showTermPlanModal, setShowTermPlanModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState(null);
+
+  // Term plan form fields
   const [yearOfStudy, setYearOfStudy] = useState('');
   const [academicYear, setAcademicYear] = useState('');
   const [weeklyBudget, setWeeklyBudget] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [installments, setInstallments] = useState([{ label: '', amount: '', date: '' }]);
+
+  // Term plan list, currently active plan, delete confirmation
   const [termPlans, setTermPlans] = useState([]);
   const [activePlan, setActivePlan] = useState(null);
   const [deleteTermPlanConfirm, setDeleteTermPlanConfirm] = useState(null);
   const [activePlanInstallments, setActivePlanInstallments] = useState([]);
 
+  // Load all term plans and pick the active one (saved in localStorage, defaults to most recent)
   const fetchTermPlans = async () => {
     const token = localStorage.getItem('token');
     try {
@@ -44,6 +54,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     }
   };
 
+  // Load all instalments and split out past ones for the income history list
   const fetchInstallments = async () => {
     const token = localStorage.getItem('token');
     try {
@@ -52,6 +63,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
       });
       const data = await res.json();
       const today = new Date();
+      // Past instalments are shown in the income history alongside manual income entries
       const past = data
         .filter(i => new Date(i.date) <= today)
         .map(i => ({
@@ -69,6 +81,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     }
   };
 
+  // Initial data load on mount
   useEffect(() => {
     const token = localStorage.getItem('token');
     fetch(`${API_URL}/api/v1/transactions`, {
@@ -82,6 +95,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     fetchInstallments();
   }, []);
 
+  // Pre-populate the form with the existing transaction's values
   const handleEditIncome = (transaction) => {
     setEditingId(transaction.id);
     setDescription(transaction.description);
@@ -98,6 +112,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     setError('');
   };
 
+  // Handles both create (POST) and update (PUT) depending on editingId
   const handleAddIncome = async () => {
     const missing = [];
     if (!description.trim()) missing.push('Title');
@@ -144,6 +159,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
       });
     }
 
+    // Re-fetch and sync App.jsx via refreshData
     const updatedResponse = await fetch(`${API_URL}/api/v1/transactions`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -166,6 +182,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     refreshData();
   };
 
+  // Backend cascades the delete to the plan's instalments via JPA
   const handleDeleteTermPlan = async (id) => {
     const token = localStorage.getItem('token');
     await fetch(`${API_URL}/api/v1/termPlan/${id}`, {
@@ -182,6 +199,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     }
 };
 
+  // Instalment row helpers used by the modal
   const addInstallment = () => {
     setInstallments([...installments, { label: '', amount: '', date: '' }]);
   };
@@ -196,6 +214,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     setInstallments(installments.filter((_, i) => i !== index));
   };
 
+  // Reset all term plan fields and open the modal in "create" mode
   const openNewTermPlan = () => {
     setIsEditing(false);
     setEditingPlanId(null);
@@ -209,6 +228,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     setShowTermPlanModal(true);
   };
 
+  // Pre-populate the modal with the active plan and its instalments for "edit" mode
   const openEditTermPlan = () => {
     if (!activePlan) return;
     setIsEditing(true);
@@ -233,6 +253,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     setShowTermPlanModal(true);
   };
 
+  // Create or update a term plan, then replace its instalments wholesale
   const handleTermPlanSubmit = async () => {
     const missing = [];
     if (!academicYear.trim()) missing.push('Academic Year');
@@ -253,6 +274,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     let termPlan;
 
     if (isEditing && editingPlanId) {
+      // Update the term plan's metadata
       const res = await fetch(`${API_URL}/api/v1/termPlan/${editingPlanId}`, {
         method: 'PUT',
         headers: {
@@ -271,6 +293,8 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
       });
       termPlan = await res.json();
 
+      // Replace instalments by deleting all old ones first, then re-creating from the form.
+      // Simpler than diffing individual instalment rows.
       const oldInstallments = activePlanInstallments.filter(i => i.termPlanId === editingPlanId);
       for (const old of oldInstallments) {
         await fetch(`${API_URL}/api/v1/installment/${old.id}`, {
@@ -295,6 +319,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
         });
       }
     } else {
+      // Create a new term plan
       const res = await fetch(`${API_URL}/api/v1/termPlan`, {
         method: 'POST',
         headers: {
@@ -313,6 +338,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
       });
       termPlan = await res.json();
 
+      // Attach each instalment to the newly-created plan
       for (const inst of validInstallments) {
         await fetch(`${API_URL}/api/v1/installment`, {
           method: 'POST',
@@ -330,6 +356,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
       }
     }
 
+    // Set the new/updated plan as active and refresh everything
     localStorage.setItem('activeTermPlanId', termPlan.id);
     setShowTermPlanModal(false);
     await fetchTermPlans();
@@ -337,6 +364,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     refreshData();
   };
 
+  // Switch between term plans when the user has more than one
   const handleSwitchPlan = (planId) => {
     const plan = termPlans.find(p => p.id === parseInt(planId));
     if (plan) {
@@ -346,10 +374,12 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
     }
   };
 
+  // Combined income list: manual income transactions + past instalments, sorted newest first
   const allIncome = [...transactions, ...pastInstallments].sort((a, b) => new Date(b.date) - new Date(a.date));
   const totalIncomeLocal = allIncome.reduce((sum, t) => sum + t.amount, 0);
   const currentPlanInstallments = activePlan ? activePlanInstallments.filter(i => i.termPlanId === activePlan.id) : [];
 
+  // Shared input styling reused across the form and modal
   const inputClass = "w-full p-3 bg-[#1a1c2e] border border-[rgba(200,150,160,0.12)] rounded-lg text-[#f0e8ea] placeholder-[rgba(240,232,234,0.3)] focus:outline-none focus:border-[rgba(200,150,160,0.3)] transition-colors";
   const inputClassSm = "p-2 bg-[#1a1c2e] border border-[rgba(200,150,160,0.12)] rounded-lg text-[#f0e8ea] placeholder-[rgba(240,232,234,0.3)] focus:outline-none text-sm";
 
@@ -359,9 +389,11 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
 
       <div className="grid grid-cols-2 gap-6 mb-6">
 
+        {/* Term plan card - shows active plan details and edit/new/delete actions */}
         <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-[#f0e8ea]">Term Plan</h2>
+            {/* Plan switcher only shown when the user has multiple plans */}
             {termPlans.length > 1 && (
               <select
                 value={activePlan?.id || ''}
@@ -402,6 +434,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
                 </div>
               </div>
 
+              {/* Instalments breakdown for the active plan */}
               {currentPlanInstallments.length > 0 && (
                 <div className="mb-4 pt-3 border-t border-[rgba(200,150,160,0.08)]">
                   <p className="text-xs text-[rgba(255,255,255,0.4)] uppercase tracking-widest mb-2">Instalments</p>
@@ -445,6 +478,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
             </div>
             </div>
           ) : (
+            // Empty state when the user hasn't created any term plan yet
             <div>
               <p className="text-[rgba(240,232,234,0.5)] text-sm mb-6">
                 Set your student loan instalments and weekly budget for this academic year
@@ -459,6 +493,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
           )}
         </div>
 
+        {/* Add/edit income form */}
         <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-[#f0e8ea]">{editingId ? 'Edit Income' : 'Add Income'}</h2>
@@ -503,6 +538,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
 
       </div>
 
+      {/* Income history list - manual income + past instalments (instalments are read-only) */}
       <div className="bg-[rgba(200,150,160,0.03)] border border-[rgba(200,150,160,0.08)] rounded-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[#f0e8ea]">Income History</h2>
@@ -534,6 +570,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
                   <p className="text-[#8ab8a0] font-semibold font-mono tracking-tight text-lg">
                     +£{Number(transaction.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
                   </p>
+                  {/* Instalments can only be edited via the term plan modal, not inline */}
                   {transaction.type !== 'INSTALMENT' && (
                     <>
                       <button onClick={() => handleEditIncome(transaction)}
@@ -555,6 +592,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
         </div>
       </div>
 
+      {/* Term plan modal - shared between create and edit modes */}
       {showTermPlanModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-[#0c0e18] border border-[rgba(200,150,160,0.15)] rounded-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -603,6 +641,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
                 placeholder="150" className={inputClass} />
             </div>
 
+            {/* Dynamic instalment rows - the user can add/remove rows as needed */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-[#f0e8ea]">Student Finance Instalments</label>
@@ -639,6 +678,7 @@ function Income({ totalIncome, transactions: transactionsProp, refreshData }) {
           </div>
         </div>
       )}
+      {/* Delete term plan confirmation modal */}
       {deleteTermPlanConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-[#0c0e18] border border-[rgba(208,136,136,0.2)] rounded-2xl p-8 w-full max-w-sm">
